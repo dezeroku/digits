@@ -160,6 +160,24 @@ body {
   color: transparent;
 }
 
+.cell.invalid {
+  animation: shake 0.4s ease;
+  background: linear-gradient(145deg, #e94560, #c73e54) !important;
+  box-shadow: 0 0 12px rgba(233, 69, 96, 0.6);
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  15%, 45%, 75% {
+    transform: translateX(-4px);
+  }
+  30%, 60%, 90% {
+    transform: translateX(4px);
+  }
+}
+
 .footer {
   padding: 1rem 0;
   border-top: 1px solid rgba(255, 255, 255, 0.1);

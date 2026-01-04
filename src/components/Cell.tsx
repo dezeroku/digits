@@ -4,10 +4,11 @@ interface CellProps {
   value: number | null;
   position: Position;
   isSelected: boolean;
+  isInvalid: boolean;
   onClick: (position: Position) => void;
 }
 
-export function Cell({ value, position, isSelected, onClick }: CellProps) {
+export function Cell({ value, position, isSelected, isInvalid, onClick }: CellProps) {
   const handleClick = () => {
     onClick(position);
   };
@@ -16,7 +17,7 @@ export function Cell({ value, position, isSelected, onClick }: CellProps) {
 
   return (
     <button
-      className={`cell ${isSelected ? 'selected' : ''} ${isEmpty ? 'empty' : ''}`}
+      className={`cell ${isSelected ? 'selected' : ''} ${isEmpty ? 'empty' : ''} ${isInvalid ? 'invalid' : ''}`}
       onClick={handleClick}
       disabled={isEmpty}
     >

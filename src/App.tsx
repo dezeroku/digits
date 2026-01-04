@@ -13,6 +13,7 @@ function App() {
     stageComplete,
     addRowsRemaining,
     clearingRows,
+    invalidCells,
     handleCellClick,
     handleAddRows,
     handleNewGame,
@@ -34,6 +35,7 @@ function App() {
           board={board}
           selectedCell={selectedCell}
           clearingRows={clearingRows}
+          invalidCells={invalidCells}
           onCellClick={handleCellClick}
         />
       </main>

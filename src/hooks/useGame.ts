@@ -2,9 +2,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { Board, Position } from '../types';
 import { generateBoard, addRows } from '../utils/boardGenerator';
 import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices, getMatchDistance } from '../utils/gameLogic';
-import { playMatchSound, playRowClearSound, playStageCompleteSound } from '../utils/sounds';
+import { playMatchSound, playRowClearSound, playStageCompleteSound, playInvalidMatchSound } from '../utils/sounds';
 
 const ROW_CLEAR_ANIMATION_MS = 400;
+const INVALID_ANIMATION_MS = 400;
 
 const INITIAL_ROWS = 10;
 const COLS = 9;
@@ -21,6 +22,7 @@ export function useGame() {
   const [addRowsRemaining, setAddRowsRemaining] = useState(MAX_ADD_ROWS);
   const [stageComplete, setStageComplete] = useState(false);
   const [clearingRows, setClearingRows] = useState<number[]>([]);
+  const [invalidCells, setInvalidCells] = useState<Position[]>([]);
 
   // Check for board cleared and show completion modal
   useEffect(() => {
@@ -85,6 +87,13 @@ export function useGame() {
           } else {
             setBoard(boardAfterMatch);
           }
+        } else {
+          // Invalid match - show feedback
+          playInvalidMatchSound();
+          setInvalidCells([selectedCell, position]);
+          setTimeout(() => {
+            setInvalidCells([]);
+          }, INVALID_ANIMATION_MS);
         }
         setSelectedCell(null);
       }
@@ -116,6 +125,7 @@ export function useGame() {
     stageComplete,
     addRowsRemaining,
     clearingRows,
+    invalidCells,
     handleCellClick,
     handleAddRows,
     handleNewGame,

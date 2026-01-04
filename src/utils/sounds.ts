@@ -65,6 +65,41 @@ function registerTimeout(callback: () => void, delay: number): void {
 }
 
 /**
+ * Play an invalid match sound - short buzz/error tone
+ */
+export function playInvalidMatchSound(): void {
+  try {
+    if (!canPlaySound('match')) return;
+    stopActiveSounds();
+
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+
+    // Create a short buzzy error sound
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    // Low frequency buzz
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(150, now);
+    oscillator.frequency.linearRampToValueAtTime(100, now + 0.15);
+
+    gainNode.gain.setValueAtTime(0.2, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.15);
+
+    registerSound([oscillator, gainNode], 'match', 150);
+  } catch {
+    // Audio not supported or blocked - fail silently
+  }
+}
+
+/**
  * Play a match sound - higher pitch for longer distances
  * @param distance - The match distance (0 = adjacent, higher = farther)
  */
