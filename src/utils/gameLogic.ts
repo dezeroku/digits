@@ -226,8 +226,16 @@ export function isBoardCleared(board: Board): boolean {
  * Check if any valid match exists on the board
  */
 export function hasAnyValidMatch(board: Board): boolean {
+  return findValidPair(board) !== null;
+}
+
+/**
+ * Find a valid pair of cells that can be matched
+ * Returns null if no valid pair exists
+ */
+export function findValidPair(board: Board): [Position, Position] | null {
   const rows = board.length;
-  if (rows === 0) return false;
+  if (rows === 0) return null;
   const cols = board[0].length;
 
   // Check each cell to see if it has a valid match
@@ -248,14 +256,14 @@ export function hasAnyValidMatch(board: Board): boolean {
           if (cell.value === other.value || cell.value + other.value === 10) {
             // Check if there's a valid path
             if (hasValidPath(board, { row, col }, { row: row2, col: col2 })) {
-              return true;
+              return [{ row, col }, { row: row2, col: col2 }];
             }
           }
         }
       }
     }
   }
-  return false;
+  return null;
 }
 
 /**

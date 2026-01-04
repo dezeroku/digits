@@ -1,16 +1,19 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Board, Position } from '../types';
 import { generateBoard, addRows } from '../utils/boardGenerator';
-import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices, getMatchDistance, hasAnyValidMatch } from '../utils/gameLogic';
+import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices, getMatchDistance, hasAnyValidMatch, findValidPair } from '../utils/gameLogic';
 import { playMatchSound, playRowClearSound, playStageCompleteSound, playInvalidMatchSound, playGameStartSound } from '../utils/sounds';
 
 const ROW_CLEAR_ANIMATION_MS = 400;
 const INVALID_ANIMATION_MS = 400;
+const HINT_ANIMATION_MS = 1500;
+const ADD_ROWS_HINT_DELAY_MS = 30 * 1000;
 
 const INITIAL_ROWS = 10;
 const COLS = 9;
 const ROWS_TO_ADD = 4;
 const MAX_ADD_ROWS = 4;
+const MAX_HELP = 3;
 
 export function useGame() {
   const [stage, setStage] = useState(1);
@@ -24,6 +27,12 @@ export function useGame() {
   const [gameOver, setGameOver] = useState(false);
   const [clearingRows, setClearingRows] = useState<number[]>([]);
   const [invalidCells, setInvalidCells] = useState<Position[]>([]);
+  const [helpRemaining, setHelpRemaining] = useState(MAX_HELP);
+  const [hintCells, setHintCells] = useState<Position[]>([]);
+  const [showAddRowsHint, setShowAddRowsHint] = useState(false);
+
+  // Track when no matches became available for add rows hint
+  const noMatchesTimerRef = useRef<number | null>(null);
 
   // Check for board cleared and show completion modal
   useEffect(() => {
@@ -47,6 +56,58 @@ export function useGame() {
       setSelectedCell(null);
     }
   }, [board, addRowsRemaining, clearingRows.length, gameOver, stageComplete]);
+
+  // Show add rows hint when stuck for 30 seconds
+  useEffect(() => {
+    // Clear any existing timer
+    if (noMatchesTimerRef.current) {
+      clearTimeout(noMatchesTimerRef.current);
+      noMatchesTimerRef.current = null;
+    }
+
+    // Reset hint when conditions change
+    setShowAddRowsHint(false);
+
+    // Don't show hint if game is over, stage complete, or can't add rows
+    if (gameOver || stageComplete || addRowsRemaining === 0) return;
+    // Don't show if board is cleared
+    if (isBoardCleared(board)) return;
+    // Don't show if there are valid matches
+    if (hasAnyValidMatch(board)) return;
+
+    // No valid matches - start timer
+    noMatchesTimerRef.current = window.setTimeout(() => {
+      setShowAddRowsHint(true);
+    }, ADD_ROWS_HINT_DELAY_MS);
+
+    return () => {
+      if (noMatchesTimerRef.current) {
+        clearTimeout(noMatchesTimerRef.current);
+      }
+    };
+  }, [board, addRowsRemaining, gameOver, stageComplete]);
+
+  // Handle help button - show a valid pair
+  const handleHelp = useCallback(() => {
+    if (helpRemaining <= 0) return;
+
+    const pair = findValidPair(board);
+    if (!pair) {
+      // No pairs available - hint to use Add Rows instead
+      if (addRowsRemaining > 0) {
+        setShowAddRowsHint(true);
+      }
+      return;
+    }
+
+    setHelpRemaining((h) => h - 1);
+    setHintCells(pair);
+    setSelectedCell(null);
+
+    setTimeout(() => {
+      setHintCells([]);
+    }, HINT_ANIMATION_MS);
+  }, [board, helpRemaining, addRowsRemaining]);
 
   // Handle continuing to next stage
   const handleContinue = useCallback(() => {
@@ -121,6 +182,7 @@ export function useGame() {
 
     setBoard((b) => addRows(b, ROWS_TO_ADD, COLS, stage));
     setAddRowsRemaining((r) => r - 1);
+    setShowAddRowsHint(false);
   }, [addRowsRemaining, stage]);
 
   const handleNewGame = useCallback(() => {
@@ -131,6 +193,8 @@ export function useGame() {
     setAddRowsRemaining(MAX_ADD_ROWS);
     setStageComplete(false);
     setGameOver(false);
+    setHelpRemaining(MAX_HELP);
+    setShowAddRowsHint(false);
     playGameStartSound();
   }, []);
 
@@ -144,9 +208,13 @@ export function useGame() {
     addRowsRemaining,
     clearingRows,
     invalidCells,
+    hintCells,
+    helpRemaining,
+    showAddRowsHint,
     handleCellClick,
     handleAddRows,
     handleNewGame,
     handleContinue,
+    handleHelp,
   };
 }

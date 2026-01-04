@@ -178,6 +178,25 @@ body {
   }
 }
 
+.cell.hint {
+  animation: hintPulse 0.75s ease-in-out infinite;
+  background: linear-gradient(145deg, #f59e0b, #d97706) !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.7);
+  transform: scale(1.1);
+  z-index: 1;
+}
+
+@keyframes hintPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
+    transform: scale(1.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.9);
+    transform: scale(1.15);
+  }
+}
+
 .footer {
   padding: 1rem 0;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -256,6 +275,31 @@ body {
 .btn-tertiary:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.btn-help {
+  background: linear-gradient(145deg, #f59e0b, #d97706);
+  color: #1a1a2e;
+}
+
+.btn-help:hover:not(.disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+}
+
+.btn.pulsing {
+  animation: buttonPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes buttonPulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(78, 204, 163, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(78, 204, 163, 0.8), 0 0 30px rgba(78, 204, 163, 0.4);
+    transform: scale(1.05);
+  }
 }
 
 .btn.disabled {

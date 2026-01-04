@@ -26,10 +26,14 @@ function App() {
     addRowsRemaining,
     clearingRows,
     invalidCells,
+    hintCells,
+    helpRemaining,
+    showAddRowsHint,
     handleCellClick,
     handleAddRows,
     handleNewGame,
     handleContinue,
+    handleHelp,
   } = useGame();
 
   const { updateAvailable, reloadApp, dismissUpdate } = useVersionCheck();
@@ -118,15 +122,19 @@ function App() {
           selectedCell={selectedCell}
           clearingRows={clearingRows}
           invalidCells={invalidCells}
+          hintCells={hintCells}
           onCellClick={handleCellClick}
         />
       </main>
       <footer className="footer">
         <GameControls
           addRowsRemaining={addRowsRemaining}
+          helpRemaining={helpRemaining}
+          showAddRowsHint={showAddRowsHint}
           onNewGame={handleNewGameClick}
           onAddRows={handleAddRows}
           onTopScores={handleShowTopScores}
+          onHelp={handleHelp}
         />
         <div className="rules">
           <p>Match pairs of digits that are <strong>equal</strong> or <strong>sum to 10</strong>.</p>

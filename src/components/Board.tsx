@@ -6,12 +6,16 @@ interface BoardProps {
   selectedCell: Position | null;
   clearingRows?: number[];
   invalidCells?: Position[];
+  hintCells?: Position[];
   onCellClick: (position: Position) => void;
 }
 
-export function Board({ board, selectedCell, clearingRows = [], invalidCells = [], onCellClick }: BoardProps) {
+export function Board({ board, selectedCell, clearingRows = [], invalidCells = [], hintCells = [], onCellClick }: BoardProps) {
   const isInvalidCell = (row: number, col: number) =>
     invalidCells.some((p) => p.row === row && p.col === col);
+
+  const isHintCell = (row: number, col: number) =>
+    hintCells.some((p) => p.row === row && p.col === col);
 
   return (
     <div className="board">
@@ -29,6 +33,7 @@ export function Board({ board, selectedCell, clearingRows = [], invalidCells = [
                 selectedCell?.row === rowIdx && selectedCell?.col === colIdx
               }
               isInvalid={isInvalidCell(rowIdx, colIdx)}
+              isHint={isHintCell(rowIdx, colIdx)}
               onClick={onCellClick}
             />
           ))}
