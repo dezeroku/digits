@@ -223,6 +223,42 @@ export function isBoardCleared(board: Board): boolean {
 }
 
 /**
+ * Check if any valid match exists on the board
+ */
+export function hasAnyValidMatch(board: Board): boolean {
+  const rows = board.length;
+  if (rows === 0) return false;
+  const cols = board[0].length;
+
+  // Check each cell to see if it has a valid match
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const cell = board[row][col];
+      if (cell.value === null) continue;
+
+      // Check against all other cells
+      for (let row2 = 0; row2 < rows; row2++) {
+        for (let col2 = 0; col2 < cols; col2++) {
+          if (row === row2 && col === col2) continue;
+
+          const other = board[row2][col2];
+          if (other.value === null) continue;
+
+          // Check if values match
+          if (cell.value === other.value || cell.value + other.value === 10) {
+            // Check if there's a valid path
+            if (hasValidPath(board, { row, col }, { row: row2, col: col2 })) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * Check if a row is completely cleared (all cells are null)
  */
 function isRowCleared(row: Cell[]): boolean {

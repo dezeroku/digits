@@ -436,6 +436,38 @@ body {
   color: #4ecca3;
 }
 
+.game-over-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.game-over-label {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.game-over-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+.game-over-value.high-score {
+  color: #4ecca3;
+  text-shadow: 0 0 20px rgba(78, 204, 163, 0.5);
+}
+
+.high-score-badge {
+  font-size: 1.25rem;
+  margin-top: 0.25rem;
+}
+
 @media (max-width: 380px) {
   .header h1 {
     font-size: 1.5rem;

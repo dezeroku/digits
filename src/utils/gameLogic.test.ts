@@ -8,6 +8,7 @@ import {
   isBoardCleared,
   getMatchDistance,
   removeClearedRows,
+  hasAnyValidMatch,
 } from './gameLogic';
 import { Board, Cell } from '../types';
 
@@ -435,5 +436,79 @@ describe('removeClearedRows', () => {
     expect(result[1][1].position).toEqual({ row: 1, col: 1 });
     expect(result[2][0].position).toEqual({ row: 2, col: 0 });
     expect(result[2][1].position).toEqual({ row: 2, col: 1 });
+  });
+});
+
+describe('hasAnyValidMatch', () => {
+  it('should return true when matching pair exists (same values)', () => {
+    const board = createBoard([
+      [3, null, 3],
+    ]);
+    expect(hasAnyValidMatch(board)).toBe(true);
+  });
+
+  it('should return true when matching pair exists (sum to 10)', () => {
+    const board = createBoard([
+      [3, null, 7],
+    ]);
+    expect(hasAnyValidMatch(board)).toBe(true);
+  });
+
+  it('should return false when no matching pairs exist', () => {
+    const board = createBoard([
+      [3, null, 4],
+    ]);
+    expect(hasAnyValidMatch(board)).toBe(false);
+  });
+
+  it('should return false when path is blocked', () => {
+    const board = createBoard([
+      [3, 5, 3],
+    ]);
+    expect(hasAnyValidMatch(board)).toBe(false);
+  });
+
+  it('should return false for empty board', () => {
+    const board = createBoard([
+      [null, null],
+      [null, null],
+    ]);
+    expect(hasAnyValidMatch(board)).toBe(false);
+  });
+
+  it('should return true for diagonal match', () => {
+    const board = createBoard([
+      [3, null],
+      [null, 3],
+    ]);
+    expect(hasAnyValidMatch(board)).toBe(true);
+  });
+
+  it('should return true for wrap-around match', () => {
+    const board = createBoard([
+      [null, null, 3],
+      [7, null, null],
+    ]);
+    expect(hasAnyValidMatch(board)).toBe(true);
+  });
+
+  it('should return false when single cell remains', () => {
+    const board = createBoard([
+      [null, 5, null],
+      [null, null, null],
+    ]);
+    expect(hasAnyValidMatch(board)).toBe(false);
+  });
+
+  it('should detect game over scenario (multiple stuck cells)', () => {
+    // All cells are stuck - no valid matches
+    const board = createBoard([
+      [1, 2, 3],
+      [4, 5, 6],
+    ]);
+    // 1 can only match 1 or 9 - none adjacent or with clear path
+    // Actually let me check... 1+9=10, 2+8=10, etc.
+    // In this board, no same values and no sums to 10 with clear paths
+    expect(hasAnyValidMatch(board)).toBe(false);
   });
 });

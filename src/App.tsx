@@ -7,6 +7,7 @@ import { StageCompleteModal } from './components/StageCompleteModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { TopScoresModal } from './components/TopScoresModal';
 import { WelcomeModal } from './components/WelcomeModal';
+import { GameOverModal } from './components/GameOverModal';
 import { getTopScores, addScore, ScoreEntry } from './utils/scoreStorage';
 
 const WELCOME_SEEN_KEY = 'digits-welcome-seen';
@@ -18,6 +19,7 @@ function App() {
     selectedCell,
     stage,
     stageComplete,
+    gameOver,
     addRowsRemaining,
     clearingRows,
     invalidCells,
@@ -31,6 +33,21 @@ function App() {
   const [showTopScores, setShowTopScores] = useState(false);
   const [topScores, setTopScores] = useState<ScoreEntry[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [isHighScore, setIsHighScore] = useState(false);
+
+  // Handle game over - save score and check if it's a high score
+  useEffect(() => {
+    if (gameOver) {
+      const wasAdded = addScore(score);
+      const scores = getTopScores();
+      const isTop1 = scores.length > 0 && scores[0].score === score;
+      setIsHighScore(wasAdded && isTop1);
+    }
+  }, [gameOver, score]);
+
+  const handleGameOverRestart = () => {
+    handleNewGame();
+  };
 
   // Show welcome modal on first visit
   useEffect(() => {
@@ -121,6 +138,13 @@ function App() {
         <TopScoresModal scores={topScores} onClose={handleCloseTopScores} />
       )}
       {showWelcome && <WelcomeModal onClose={handleCloseWelcome} />}
+      {gameOver && (
+        <GameOverModal
+          score={score}
+          isHighScore={isHighScore}
+          onRestart={handleGameOverRestart}
+        />
+      )}
     </div>
   );
 }

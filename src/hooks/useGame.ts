@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Board, Position } from '../types';
 import { generateBoard, addRows } from '../utils/boardGenerator';
-import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices, getMatchDistance } from '../utils/gameLogic';
+import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices, getMatchDistance, hasAnyValidMatch } from '../utils/gameLogic';
 import { playMatchSound, playRowClearSound, playStageCompleteSound, playInvalidMatchSound } from '../utils/sounds';
 
 const ROW_CLEAR_ANIMATION_MS = 400;
@@ -21,6 +21,7 @@ export function useGame() {
   const [selectedCell, setSelectedCell] = useState<Position | null>(null);
   const [addRowsRemaining, setAddRowsRemaining] = useState(MAX_ADD_ROWS);
   const [stageComplete, setStageComplete] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
   const [clearingRows, setClearingRows] = useState<number[]>([]);
   const [invalidCells, setInvalidCells] = useState<Position[]>([]);
 
@@ -32,6 +33,20 @@ export function useGame() {
       playStageCompleteSound();
     }
   }, [board, stageComplete]);
+
+  // Check for game over (no valid matches and no add rows remaining)
+  useEffect(() => {
+    // Don't check during animations or if already game over/stage complete
+    if (clearingRows.length > 0 || gameOver || stageComplete) return;
+    // Don't check if board is cleared
+    if (isBoardCleared(board)) return;
+
+    // Game over if no valid matches and can't add more rows
+    if (!hasAnyValidMatch(board) && addRowsRemaining === 0) {
+      setGameOver(true);
+      setSelectedCell(null);
+    }
+  }, [board, addRowsRemaining, clearingRows.length, gameOver, stageComplete]);
 
   // Handle continuing to next stage
   const handleContinue = useCallback(() => {
@@ -115,6 +130,7 @@ export function useGame() {
     setSelectedCell(null);
     setAddRowsRemaining(MAX_ADD_ROWS);
     setStageComplete(false);
+    setGameOver(false);
   }, []);
 
   return {
@@ -123,6 +139,7 @@ export function useGame() {
     selectedCell,
     stage,
     stageComplete,
+    gameOver,
     addRowsRemaining,
     clearingRows,
     invalidCells,
