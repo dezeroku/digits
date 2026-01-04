@@ -248,6 +248,16 @@ body {
   box-shadow: 0 4px 15px rgba(78, 204, 163, 0.4);
 }
 
+.btn-tertiary {
+  background: linear-gradient(145deg, #6366f1, #5558e3);
+  color: #fff;
+}
+
+.btn-tertiary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
 .btn.disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -320,16 +330,67 @@ body {
   background-clip: text;
 }
 
+.modal-title-warning {
+  background: linear-gradient(90deg, #e94560, #ff6b6b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .modal-message {
   color: rgba(255, 255, 255, 0.8);
   margin-bottom: 1.5rem;
   font-size: 1rem;
 }
 
+.modal-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.modal-buttons .modal-button {
+  flex: 1;
+}
+
 .modal-button {
   width: 100%;
   padding: 1rem;
   font-size: 1.1rem;
+}
+
+.scores-list {
+  margin-bottom: 1.5rem;
+}
+
+.score-entry {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.score-entry:last-child {
+  margin-bottom: 0;
+}
+
+.score-rank {
+  font-weight: bold;
+  color: #6366f1;
+  width: 2.5rem;
+}
+
+.score-points {
+  font-weight: bold;
+  color: #4ecca3;
+  font-size: 1.25rem;
+  flex: 1;
+}
+
+.score-date {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
 }
 
 @media (max-width: 380px) {

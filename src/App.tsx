@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { useGame } from './hooks/useGame';
 import { Board } from './components/Board';
 import { ScoreBoard } from './components/ScoreBoard';
 import { GameControls } from './components/GameControls';
 import { StageCompleteModal } from './components/StageCompleteModal';
+import { ConfirmModal } from './components/ConfirmModal';
+import { TopScoresModal } from './components/TopScoresModal';
+import { getTopScores, addScore, ScoreEntry } from './utils/scoreStorage';
 
 function App() {
   const {
@@ -19,6 +23,34 @@ function App() {
     handleNewGame,
     handleContinue,
   } = useGame();
+
+  const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
+  const [showTopScores, setShowTopScores] = useState(false);
+  const [topScores, setTopScores] = useState<ScoreEntry[]>([]);
+
+  const handleNewGameClick = () => {
+    setShowNewGameConfirm(true);
+  };
+
+  const handleConfirmNewGame = () => {
+    setShowNewGameConfirm(false);
+    // Save current score before starting new game
+    addScore(score);
+    handleNewGame();
+  };
+
+  const handleCancelNewGame = () => {
+    setShowNewGameConfirm(false);
+  };
+
+  const handleShowTopScores = () => {
+    setTopScores(getTopScores());
+    setShowTopScores(true);
+  };
+
+  const handleCloseTopScores = () => {
+    setShowTopScores(false);
+  };
 
   return (
     <div className="app">
@@ -42,8 +74,9 @@ function App() {
       <footer className="footer">
         <GameControls
           addRowsRemaining={addRowsRemaining}
-          onNewGame={handleNewGame}
+          onNewGame={handleNewGameClick}
           onAddRows={handleAddRows}
+          onTopScores={handleShowTopScores}
         />
         <div className="rules">
           <p>Match pairs of digits that are <strong>equal</strong> or <strong>sum to 10</strong>.</p>
@@ -53,6 +86,19 @@ function App() {
       </footer>
       {stageComplete && (
         <StageCompleteModal stage={stage} onContinue={handleContinue} />
+      )}
+      {showNewGameConfirm && (
+        <ConfirmModal
+          title="Start New Game?"
+          message="Your current progress will be lost. Are you sure?"
+          confirmText="New Game"
+          cancelText="Cancel"
+          onConfirm={handleConfirmNewGame}
+          onCancel={handleCancelNewGame}
+        />
+      )}
+      {showTopScores && (
+        <TopScoresModal scores={topScores} onClose={handleCloseTopScores} />
       )}
     </div>
   );

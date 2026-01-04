@@ -2,12 +2,14 @@ interface GameControlsProps {
   addRowsRemaining: number;
   onNewGame: () => void;
   onAddRows: () => void;
+  onTopScores: () => void;
 }
 
 export function GameControls({
   addRowsRemaining,
   onNewGame,
   onAddRows,
+  onTopScores,
 }: GameControlsProps) {
   const canAddRows = addRowsRemaining > 0;
 
@@ -22,6 +24,9 @@ export function GameControls({
         disabled={!canAddRows}
       >
         Add Rows ({addRowsRemaining})
+      </button>
+      <button className="btn btn-tertiary" onClick={onTopScores}>
+        Top Scores
       </button>
     </div>
   );
