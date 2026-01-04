@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGame } from './hooks/useGame';
 import { Board } from './components/Board';
 import { ScoreBoard } from './components/ScoreBoard';
@@ -6,7 +6,10 @@ import { GameControls } from './components/GameControls';
 import { StageCompleteModal } from './components/StageCompleteModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { TopScoresModal } from './components/TopScoresModal';
+import { WelcomeModal } from './components/WelcomeModal';
 import { getTopScores, addScore, ScoreEntry } from './utils/scoreStorage';
+
+const WELCOME_SEEN_KEY = 'digits-welcome-seen';
 
 function App() {
   const {
@@ -27,6 +30,20 @@ function App() {
   const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
   const [showTopScores, setShowTopScores] = useState(false);
   const [topScores, setTopScores] = useState<ScoreEntry[]>([]);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // Show welcome modal on first visit
+  useEffect(() => {
+    const hasSeenWelcome = localStorage.getItem(WELCOME_SEEN_KEY);
+    if (!hasSeenWelcome) {
+      setShowWelcome(true);
+    }
+  }, []);
+
+  const handleCloseWelcome = () => {
+    localStorage.setItem(WELCOME_SEEN_KEY, 'true');
+    setShowWelcome(false);
+  };
 
   const handleNewGameClick = () => {
     setShowNewGameConfirm(true);
@@ -103,6 +120,7 @@ function App() {
       {showTopScores && (
         <TopScoresModal scores={topScores} onClose={handleCloseTopScores} />
       )}
+      {showWelcome && <WelcomeModal onClose={handleCloseWelcome} />}
     </div>
   );
 }
