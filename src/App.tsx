@@ -9,6 +9,7 @@ import { TopScoresModal } from './components/TopScoresModal';
 import { WelcomeModal } from './components/WelcomeModal';
 import { GameOverModal } from './components/GameOverModal';
 import { getTopScores, addScore, ScoreEntry } from './utils/scoreStorage';
+import { playGameOverSound, playHighScoreSound } from './utils/sounds';
 
 const WELCOME_SEEN_KEY = 'digits-welcome-seen';
 
@@ -41,7 +42,15 @@ function App() {
       const wasAdded = addScore(score);
       const scores = getTopScores();
       const isTop1 = scores.length > 0 && scores[0].score === score;
-      setIsHighScore(wasAdded && isTop1);
+      const achievedHighScore = wasAdded && isTop1;
+      setIsHighScore(achievedHighScore);
+
+      // Play appropriate sound
+      if (achievedHighScore) {
+        playHighScoreSound();
+      } else {
+        playGameOverSound();
+      }
     }
   }, [gameOver, score]);
 

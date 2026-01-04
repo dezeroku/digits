@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Board, Position } from '../types';
 import { generateBoard, addRows } from '../utils/boardGenerator';
 import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices, getMatchDistance, hasAnyValidMatch } from '../utils/gameLogic';
-import { playMatchSound, playRowClearSound, playStageCompleteSound, playInvalidMatchSound } from '../utils/sounds';
+import { playMatchSound, playRowClearSound, playStageCompleteSound, playInvalidMatchSound, playGameStartSound } from '../utils/sounds';
 
 const ROW_CLEAR_ANIMATION_MS = 400;
 const INVALID_ANIMATION_MS = 400;
@@ -131,6 +131,7 @@ export function useGame() {
     setAddRowsRemaining(MAX_ADD_ROWS);
     setStageComplete(false);
     setGameOver(false);
+    playGameStartSound();
   }, []);
 
   return {
