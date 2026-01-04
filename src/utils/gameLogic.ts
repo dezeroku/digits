@@ -177,12 +177,38 @@ export function removeMatch(board: Board, pos1: Position, pos2: Position): Board
 }
 
 /**
- * Calculate score for a match
+ * Calculate the distance between two positions.
+ * Uses the linear (1D wrap-around) distance for consistency with path rules.
+ */
+export function getMatchDistance(board: Board, pos1: Position, pos2: Position): number {
+  const cols = board[0].length;
+  const idx1 = posToIndex(pos1, cols);
+  const idx2 = posToIndex(pos2, cols);
+  // Distance is the number of cells between them (not including endpoints)
+  return Math.abs(idx1 - idx2) - 1;
+}
+
+/**
+ * Calculate score for a match.
+ * Base score = sum of the two digits
+ * Distance bonus = cells between * 2 (rewards clearing paths for distant matches)
  */
 export function calculateScore(board: Board, pos1: Position, pos2: Position): number {
   const cell1 = getCell(board, pos1);
   const cell2 = getCell(board, pos2);
 
   if (!cell1?.value || !cell2?.value) return 0;
-  return cell1.value + cell2.value;
+
+  const baseScore = cell1.value + cell2.value;
+  const distance = getMatchDistance(board, pos1, pos2);
+  const distanceBonus = distance * 2;
+
+  return baseScore + distanceBonus;
+}
+
+/**
+ * Check if the board is completely cleared (all cells are null)
+ */
+export function isBoardCleared(board: Board): boolean {
+  return board.every((row) => row.every((cell) => cell.value === null));
 }

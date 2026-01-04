@@ -5,6 +5,8 @@ import {
   canMatch,
   removeMatch,
   calculateScore,
+  isBoardCleared,
+  getMatchDistance,
 } from './gameLogic';
 import { Board, Cell } from '../types';
 
@@ -234,11 +236,33 @@ describe('removeMatch', () => {
 });
 
 describe('calculateScore', () => {
-  it('should return sum of matched cell values', () => {
+  it('should return base score for adjacent cells (no distance bonus)', () => {
     const board = createBoard([
       [3, 7],
     ]);
+    // Adjacent cells: distance = 0, bonus = 0
+    // Base score = 3 + 7 = 10
     expect(calculateScore(board, { row: 0, col: 0 }, { row: 0, col: 1 })).toBe(10);
+  });
+
+  it('should add distance bonus for cells with gap between', () => {
+    const board = createBoard([
+      [3, null, null, 7],
+    ]);
+    // Distance = 2 cells between, bonus = 2 * 2 = 4
+    // Base score = 3 + 7 = 10
+    // Total = 10 + 4 = 14
+    expect(calculateScore(board, { row: 0, col: 0 }, { row: 0, col: 3 })).toBe(14);
+  });
+
+  it('should calculate larger distance bonus for further cells', () => {
+    const board = createBoard([
+      [5, null, null, null, null, 5],
+    ]);
+    // Distance = 4 cells between, bonus = 4 * 2 = 8
+    // Base score = 5 + 5 = 10
+    // Total = 10 + 8 = 18
+    expect(calculateScore(board, { row: 0, col: 0 }, { row: 0, col: 5 })).toBe(18);
   });
 
   it('should return 0 for null cells', () => {
@@ -246,5 +270,78 @@ describe('calculateScore', () => {
       [null, 5],
     ]);
     expect(calculateScore(board, { row: 0, col: 0 }, { row: 0, col: 1 })).toBe(0);
+  });
+});
+
+describe('isBoardCleared', () => {
+  it('should return true for completely empty board', () => {
+    const board = createBoard([
+      [null, null],
+      [null, null],
+    ]);
+    expect(isBoardCleared(board)).toBe(true);
+  });
+
+  it('should return false if any cell has a value', () => {
+    const board = createBoard([
+      [null, null],
+      [null, 5],
+    ]);
+    expect(isBoardCleared(board)).toBe(false);
+  });
+
+  it('should return false for full board', () => {
+    const board = createBoard([
+      [1, 2],
+      [3, 4],
+    ]);
+    expect(isBoardCleared(board)).toBe(false);
+  });
+});
+
+describe('getMatchDistance', () => {
+  it('should return 0 for adjacent cells', () => {
+    const board = createBoard([
+      [1, 2, 3],
+    ]);
+    expect(getMatchDistance(board, { row: 0, col: 0 }, { row: 0, col: 1 })).toBe(0);
+  });
+
+  it('should return number of cells between positions', () => {
+    const board = createBoard([
+      [1, null, null, 2],
+    ]);
+    // 2 cells between positions 0 and 3
+    expect(getMatchDistance(board, { row: 0, col: 0 }, { row: 0, col: 3 })).toBe(2);
+  });
+
+  it('should work across rows (wrap-around distance)', () => {
+    const board = createBoard([
+      [1, 2, 3],
+      [4, 5, 6],
+    ]);
+    // Position (0,2) is index 2, position (1,0) is index 3
+    // Distance = |3 - 2| - 1 = 0 (adjacent in linear order)
+    expect(getMatchDistance(board, { row: 0, col: 2 }, { row: 1, col: 0 })).toBe(0);
+  });
+
+  it('should calculate correct distance for positions on different rows', () => {
+    const board = createBoard([
+      [1, 2, 3, 4],
+      [5, 6, 7, 8],
+    ]);
+    // Position (0,0) is index 0, position (1,2) is index 6
+    // Distance = |6 - 0| - 1 = 5
+    expect(getMatchDistance(board, { row: 0, col: 0 }, { row: 1, col: 2 })).toBe(5);
+  });
+
+  it('should be symmetric (same distance regardless of order)', () => {
+    const board = createBoard([
+      [1, 2, 3, 4, 5],
+    ]);
+    const dist1 = getMatchDistance(board, { row: 0, col: 0 }, { row: 0, col: 4 });
+    const dist2 = getMatchDistance(board, { row: 0, col: 4 }, { row: 0, col: 0 });
+    expect(dist1).toBe(dist2);
+    expect(dist1).toBe(3);
   });
 });

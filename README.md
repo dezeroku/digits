@@ -1,37 +1,51 @@
-# digits!
+# Digits!
 
-A small web app based on a mobile game, that tests your ability to see patterns.
+A puzzle game that challenges your pattern recognition skills. Match pairs of digits to clear the board and advance through increasingly difficult stages.
 
-# How does it work?
+## Quick Start
 
-At the start of the game you are given a board (basically a 2D array),
-that's filled with digits from 1 to 9.
-Your job is to match every two digits in a pair.
-Matching the pair causes both the digits to disappear and your score to go up by the sum of the two
-(TODO: add bonus points based on distance).
+```bash
+npm install
+npm run dev
+```
 
-Digits can be paired if one of the below statements is true:
+## How to Play
 
-- digits are the same
-- sum of the chosen digits is equal to 10
+**Goal:** Clear all digits from the board by matching them in pairs.
 
-To make it a little harder there are also rules regarding positions of the digits themselves.
-They have to line up either vertically, horizontally or diagonally and you can only match the two digits
-if there are no digits left between them (either they are neighbours or the digits between them have already been
-eliminated previously).
+**Matching Rules:**
+- Two digits match if they are **equal** (e.g., 5-5) or **sum to 10** (e.g., 3-7)
+- There must be a **clear path** between them (no digits blocking)
 
-As a side bonus, the horizontal matching also works between multiple rows, as long as there are no digits between.
-For example, in the below 2D array the digits 3 and 7 can be paired, because of this rule:
-|3| |
-| |7|
-| | |
+**Valid Paths:**
+| Direction | Description |
+|-----------|-------------|
+| Horizontal | Same row, no digits between |
+| Vertical | Same column, no digits between |
+| Diagonal | Along diagonal, no digits between |
+| Wrap-around | Across row boundaries (end of one row to start of next) |
 
-But in the below 2D array they can not be matched because of the digit 5 that's blocking the way:
-|3| |
-|5|7|
-| | |
+**Scoring:**
+- Base points = sum of matched digits
+- Bonus = 2 points per cell between the matched pair
 
+## Game Progression
 
-# Disclaimer
+- **Stages:** Clear the board to advance. Each stage gets harder.
+- **Add Rows:** Limited to 4 uses per stage. Adds new rows when stuck.
 
-Vibe-coded with Claude Code to see what it can do
+## Development
+
+```bash
+npm run dev      # Start dev server
+npm run build    # Production build
+npm test         # Run tests
+```
+
+## Documentation
+
+See [design.md](./design.md) for detailed game mechanics and technical implementation.
+
+---
+
+*Built with React + TypeScript + Vite*

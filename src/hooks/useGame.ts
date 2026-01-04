@@ -1,16 +1,40 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Board, Position } from '../types';
-import { generateBoard, addRows } from '../utils/boardGenerator';
-import { canMatch, removeMatch, calculateScore } from '../utils/gameLogic';
+import { generateBoard, addRows, getDifficultyForStage } from '../utils/boardGenerator';
+import { canMatch, removeMatch, calculateScore, isBoardCleared } from '../utils/gameLogic';
 
-const INITIAL_ROWS = 20;
-const COLS = 12;
+const INITIAL_ROWS = 10;
+const COLS = 9;
 const ROWS_TO_ADD = 4;
+const MAX_ADD_ROWS = 4;
 
 export function useGame() {
-  const [board, setBoard] = useState<Board>(() => generateBoard(INITIAL_ROWS, COLS));
+  const [stage, setStage] = useState(1);
+  const [board, setBoard] = useState<Board>(() =>
+    generateBoard({ rows: INITIAL_ROWS, cols: COLS, difficulty: 'easy' })
+  );
   const [score, setScore] = useState(0);
   const [selectedCell, setSelectedCell] = useState<Position | null>(null);
+  const [addRowsRemaining, setAddRowsRemaining] = useState(MAX_ADD_ROWS);
+  const [stageComplete, setStageComplete] = useState(false);
+
+  // Check for board cleared and show completion modal
+  useEffect(() => {
+    if (isBoardCleared(board) && !stageComplete) {
+      setStageComplete(true);
+      setSelectedCell(null);
+    }
+  }, [board, stageComplete]);
+
+  // Handle continuing to next stage
+  const handleContinue = useCallback(() => {
+    const nextStage = stage + 1;
+    const difficulty = getDifficultyForStage(nextStage);
+    setStage(nextStage);
+    setBoard(generateBoard({ rows: INITIAL_ROWS, cols: COLS, difficulty }));
+    setAddRowsRemaining(MAX_ADD_ROWS);
+    setStageComplete(false);
+  }, [stage]);
 
   const handleCellClick = useCallback(
     (position: Position) => {
@@ -42,21 +66,32 @@ export function useGame() {
   );
 
   const handleAddRows = useCallback(() => {
-    setBoard((b) => addRows(b, ROWS_TO_ADD, COLS));
-  }, []);
+    if (addRowsRemaining <= 0) return;
+
+    const difficulty = getDifficultyForStage(stage);
+    setBoard((b) => addRows(b, ROWS_TO_ADD, COLS, difficulty));
+    setAddRowsRemaining((r) => r - 1);
+  }, [addRowsRemaining, stage]);
 
   const handleNewGame = useCallback(() => {
-    setBoard(generateBoard(INITIAL_ROWS, COLS));
+    setStage(1);
+    setBoard(generateBoard({ rows: INITIAL_ROWS, cols: COLS, difficulty: 'easy' }));
     setScore(0);
     setSelectedCell(null);
+    setAddRowsRemaining(MAX_ADD_ROWS);
+    setStageComplete(false);
   }, []);
 
   return {
     board,
     score,
     selectedCell,
+    stage,
+    stageComplete,
+    addRowsRemaining,
     handleCellClick,
     handleAddRows,
     handleNewGame,
+    handleContinue,
   };
 }
