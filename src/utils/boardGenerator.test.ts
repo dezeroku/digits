@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateBoard, addRows, createRow, Difficulty, getDifficultyForStage } from './boardGenerator';
+import { generateBoard, addRows, createRow, getDifficultyFactor } from './boardGenerator';
 
 describe('createRow', () => {
   it('should create a row with specified number of columns', () => {
@@ -102,11 +102,11 @@ describe('generateBoard', () => {
     }
   });
 
-  it('should support different difficulty levels', () => {
-    const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
+  it('should support different stage levels', () => {
+    const stages = [1, 5, 10];
 
-    for (const difficulty of difficulties) {
-      const board = generateBoard({ rows: 6, cols: 6, difficulty });
+    for (const stage of stages) {
+      const board = generateBoard({ rows: 6, cols: 6, stage });
       expect(board).toHaveLength(6);
       expect(board[0]).toHaveLength(6);
 
@@ -172,9 +172,9 @@ describe('addRows', () => {
     expect(newBoard[9]).toHaveLength(9); // default cols
   });
 
-  it('should support difficulty parameter', () => {
-    const board = generateBoard({ rows: 4, cols: 6, difficulty: 'hard' });
-    const newBoard = addRows(board, 4, 6, 'hard');
+  it('should support stage parameter', () => {
+    const board = generateBoard({ rows: 4, cols: 6, stage: 10 });
+    const newBoard = addRows(board, 4, 6, 10);
 
     expect(newBoard).toHaveLength(8);
     // All new cells should have values
@@ -186,27 +186,26 @@ describe('addRows', () => {
   });
 });
 
-describe('getDifficultyForStage', () => {
-  it('should return easy for stage 1', () => {
-    expect(getDifficultyForStage(1)).toBe('easy');
+describe('getDifficultyFactor', () => {
+  it('should return 0.1 for stage 1', () => {
+    expect(getDifficultyFactor(1)).toBe(0.1);
   });
 
-  it('should return easy for stage 0 or negative', () => {
-    expect(getDifficultyForStage(0)).toBe('easy');
-    expect(getDifficultyForStage(-1)).toBe('easy');
+  it('should clamp to 0.1 for stage 0 or negative', () => {
+    expect(getDifficultyFactor(0)).toBe(0.1);
+    expect(getDifficultyFactor(-1)).toBe(0.1);
   });
 
-  it('should return medium for stage 2', () => {
-    expect(getDifficultyForStage(2)).toBe('medium');
+  it('should return 0.5 for stage 5', () => {
+    expect(getDifficultyFactor(5)).toBe(0.5);
   });
 
-  it('should return hard for stage 3', () => {
-    expect(getDifficultyForStage(3)).toBe('hard');
+  it('should return 1.0 for stage 10', () => {
+    expect(getDifficultyFactor(10)).toBe(1.0);
   });
 
-  it('should return hard for all stages above 3', () => {
-    expect(getDifficultyForStage(4)).toBe('hard');
-    expect(getDifficultyForStage(10)).toBe('hard');
-    expect(getDifficultyForStage(100)).toBe('hard');
+  it('should clamp to 1.0 for stages above 10', () => {
+    expect(getDifficultyFactor(11)).toBe(1.0);
+    expect(getDifficultyFactor(100)).toBe(1.0);
   });
 });

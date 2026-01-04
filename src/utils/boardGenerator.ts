@@ -5,25 +5,17 @@ const COLS = 9;
 const ROWS = 10;
 
 /**
- * Difficulty levels for board generation.
- * Higher difficulty = pairs are more spread out and require clearing other cells first.
+ * Get difficulty factor based on stage (0-1 range).
+ * Stage 1 = 0.1 (easy), Stage 10+ = 1.0 (hard)
  */
-export type Difficulty = 'easy' | 'medium' | 'hard';
-
-/**
- * Get difficulty based on current stage.
- * Stage 1: easy, Stage 2: medium, Stage 3+: hard
- */
-export function getDifficultyForStage(stage: number): Difficulty {
-  if (stage <= 1) return 'easy';
-  if (stage === 2) return 'medium';
-  return 'hard';
+export function getDifficultyFactor(stage: number): number {
+  return Math.min(1, Math.max(0.1, stage / 10));
 }
 
 export interface GeneratorOptions {
   rows?: number;
   cols?: number;
-  difficulty?: Difficulty;
+  stage?: number;
 }
 
 /**
@@ -170,32 +162,21 @@ function getLinearDistance(a: Position, b: Position, cols: number): number {
 }
 
 /**
- * Get difficulty configuration
+ * Get difficulty configuration based on stage.
+ * Interpolates between easy (stage 1) and hard (stage 10+) settings.
  */
-function getDifficultyConfig(difficulty: Difficulty) {
-  switch (difficulty) {
-    case 'easy':
-      return {
-        // Close pairs, easy to find matches
-        minDistanceRatio: 0,
-        maxDistanceRatio: 0.25,
-        preferFar: false,
-      };
-    case 'medium':
-      return {
-        // Some distance, moderate challenge
-        minDistanceRatio: 0.02,
-        maxDistanceRatio: 0.4,
-        preferFar: false,
-      };
-    case 'hard':
-      return {
-        // Spread out pairs that require clearing
-        minDistanceRatio: 0.04,
-        maxDistanceRatio: 0.7,
-        preferFar: true,
-      };
-  }
+function getDifficultyConfig(stage: number) {
+  const factor = getDifficultyFactor(stage);
+
+  // Easy (factor=0.1): minDistanceRatio=0, maxDistanceRatio=0.25, preferFar=false
+  // Hard (factor=1.0): minDistanceRatio=0.04, maxDistanceRatio=0.7, preferFar=true
+
+  // Interpolate between easy and hard settings
+  const minDistanceRatio = 0.04 * (factor - 0.1) / 0.9;  // 0 at stage 1, 0.04 at stage 10
+  const maxDistanceRatio = 0.25 + 0.45 * (factor - 0.1) / 0.9;  // 0.25 at stage 1, 0.7 at stage 10
+  const preferFar = factor > 0.5;  // Switch at stage 5
+
+  return { minDistanceRatio, maxDistanceRatio, preferFar };
 }
 
 /**
@@ -206,14 +187,14 @@ function findMatchablePositionWithDifficulty(
   board: Board,
   target: Position,
   candidates: Position[],
-  difficulty: Difficulty,
+  stage: number,
   pairIndex: number,
   totalPairs: number
 ): Position | null {
   const cols = board[0].length;
   const rows = board.length;
   const totalCells = rows * cols;
-  const config = getDifficultyConfig(difficulty);
+  const config = getDifficultyConfig(stage);
 
   // Calculate progress through board generation (0 = start, 1 = end)
   const progress = pairIndex / totalPairs;
@@ -305,16 +286,15 @@ function findMatchablePositionWithDifficulty(
 /**
  * Generate a solvable board with configurable difficulty.
  *
- * Difficulty affects how spread out matching pairs are:
- * - easy: pairs are mostly adjacent, can be matched quickly
- * - medium: mix of close and spread-out pairs
- * - hard: pairs are far apart, requiring clearing other cells first
+ * Difficulty is based on stage number (1-10+):
+ * - Stage 1: pairs are mostly adjacent, can be matched quickly
+ * - Stage 10+: pairs are far apart, requiring clearing other cells first
  */
 export function generateBoard(options: GeneratorOptions = {}): Board {
   const {
     rows = ROWS,
     cols = COLS,
-    difficulty = 'medium',
+    stage = 1,
   } = options;
 
   const totalCells = rows * cols;
@@ -324,7 +304,7 @@ export function generateBoard(options: GeneratorOptions = {}): Board {
 
   // Try the difficulty-based algorithm
   for (let attempt = 0; attempt < 50; attempt++) {
-    const result = tryGenerateSolvableBoard(rows, cols, difficulty);
+    const result = tryGenerateSolvableBoard(rows, cols, stage);
     if (result) return result;
   }
 
@@ -338,7 +318,7 @@ export function generateBoard(options: GeneratorOptions = {}): Board {
 function tryGenerateSolvableBoard(
   rows: number,
   cols: number,
-  difficulty: Difficulty
+  stage: number
 ): Board | null {
   const board = createEmptyBoard(rows, cols);
   let available = getAllPositions(rows, cols);
@@ -355,7 +335,7 @@ function tryGenerateSolvableBoard(
       board,
       pos1,
       available,
-      difficulty,
+      stage,
       pairIndex,
       totalPairs
     );
@@ -411,7 +391,7 @@ export function addRows(
   board: Board,
   count: number = 4,
   cols: number = COLS,
-  difficulty: Difficulty = 'medium'
+  stage: number = 1
 ): Board {
   const newBoard = board.map((row) => [...row]);
   const startRow = board.length;
@@ -447,7 +427,7 @@ export function addRows(
       newBoard,
       pos1,
       newPositions,
-      difficulty,
+      stage,
       pairIndex,
       totalPairs
     );

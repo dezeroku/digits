@@ -57,7 +57,7 @@ describe('Board Generation - Distance Distribution Acceptance Tests', () => {
 
     // Generate multiple boards and analyze
     for (let i = 0; i < 10; i++) {
-      const board = generateBoard({ rows: 10, cols: 9, difficulty: 'easy' });
+      const board = generateBoard({ rows: 10, cols: 9, stage: 1 });
       const pairs = findAllMatchablePairs(board);
       const analysis = analyzeDistances(pairs);
       results.push(analysis);
@@ -87,7 +87,7 @@ describe('Board Generation - Distance Distribution Acceptance Tests', () => {
 
     // Generate 20 boards for statistical significance
     for (let i = 0; i < 20; i++) {
-      const board = generateBoard({ rows: 10, cols: 9, difficulty: 'easy' });
+      const board = generateBoard({ rows: 10, cols: 9, stage: 1 });
       const pairs = findAllMatchablePairs(board);
       const analysis = analyzeDistances(pairs);
       totalAdjacent += analysis.adjacent;
@@ -102,7 +102,7 @@ describe('Board Generation - Distance Distribution Acceptance Tests', () => {
   });
 
   it('DEBUG: trace a single board generation', () => {
-    const board = generateBoard({ rows: 10, cols: 9, difficulty: 'easy' });
+    const board = generateBoard({ rows: 10, cols: 9, stage: 1 });
     const pairs = findAllMatchablePairs(board);
 
     console.log('\n=== MATCHABLE PAIRS ON GENERATED BOARD ===');
@@ -117,7 +117,7 @@ describe('Board Generation - Distance Distribution Acceptance Tests', () => {
 
   it('DEBUG: check first row of generated board', () => {
     for (let i = 0; i < 5; i++) {
-      const board = generateBoard({ rows: 10, cols: 9, difficulty: 'easy' });
+      const board = generateBoard({ rows: 10, cols: 9, stage: 1 });
       const firstRow = board[0].map(c => c.value).join(' ');
       console.log(`Board ${i + 1} first row: [${firstRow}]`);
 
