@@ -83,6 +83,9 @@ function App() {
           <p>Path must be clear: horizontal, vertical, diagonal, or wrap-around.</p>
           <p><strong>Tip:</strong> Distant matches earn bonus points!</p>
         </div>
+        <div className="build-info">
+          Build: {__GIT_COMMIT__} ({new Date(__BUILD_TIME__).toLocaleString()})
+        </div>
       </footer>
       {stageComplete && (
         <StageCompleteModal stage={stage} onContinue={handleContinue} />

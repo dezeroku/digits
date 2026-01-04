@@ -275,6 +275,13 @@ body {
   color: #4ecca3;
 }
 
+.build-info {
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin-top: 1rem;
+}
+
 /* Modal styles */
 .modal-overlay {
   position: fixed;
