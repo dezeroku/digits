@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Board, Position } from '../types';
 import { generateBoard, addRows } from '../utils/boardGenerator';
-import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices } from '../utils/gameLogic';
+import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices, getMatchDistance } from '../utils/gameLogic';
+import { playMatchSound, playRowClearSound, playStageCompleteSound } from '../utils/sounds';
 
 const ROW_CLEAR_ANIMATION_MS = 400;
 
@@ -26,6 +27,7 @@ export function useGame() {
     if (isBoardCleared(board) && !stageComplete) {
       setStageComplete(true);
       setSelectedCell(null);
+      playStageCompleteSound();
     }
   }, [board, stageComplete]);
 
@@ -58,8 +60,12 @@ export function useGame() {
         // Second selection - attempt match
         if (canMatch(board, selectedCell, position)) {
           const points = calculateScore(board, selectedCell, position);
+          const distance = getMatchDistance(board, selectedCell, position);
           const boardAfterMatch = removeMatch(board, selectedCell, position);
           setScore((s) => s + points);
+
+          // Play match sound (pitch increases with distance)
+          playMatchSound(distance);
 
           // Check for cleared rows
           const clearedIndices = getClearedRowIndices(boardAfterMatch);
@@ -67,6 +73,9 @@ export function useGame() {
             // Show clearing animation first
             setBoard(boardAfterMatch);
             setClearingRows(clearedIndices);
+
+            // Play row clear sound after a short delay
+            setTimeout(() => playRowClearSound(), 100);
 
             // After animation, actually remove the rows
             setTimeout(() => {
