@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useGame } from './hooks/useGame';
+import { useVersionCheck } from './hooks/useVersionCheck';
 import { Board } from './components/Board';
 import { ScoreBoard } from './components/ScoreBoard';
 import { GameControls } from './components/GameControls';
@@ -8,6 +9,7 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { TopScoresModal } from './components/TopScoresModal';
 import { WelcomeModal } from './components/WelcomeModal';
 import { GameOverModal } from './components/GameOverModal';
+import { UpdateBanner } from './components/UpdateBanner';
 import { getTopScores, addScore, ScoreEntry } from './utils/scoreStorage';
 import { playGameOverSound, playHighScoreSound } from './utils/sounds';
 
@@ -29,6 +31,8 @@ function App() {
     handleNewGame,
     handleContinue,
   } = useGame();
+
+  const { updateAvailable, reloadApp, dismissUpdate } = useVersionCheck();
 
   const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
   const [showTopScores, setShowTopScores] = useState(false);
@@ -97,6 +101,9 @@ function App() {
 
   return (
     <div className="app">
+      {updateAvailable && (
+        <UpdateBanner onReload={reloadApp} onDismiss={dismissUpdate} />
+      )}
       <header className="header">
         <h1>Digits!</h1>
         <div className="stage-info">
