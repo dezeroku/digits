@@ -7,6 +7,7 @@ import {
   calculateScore,
   isBoardCleared,
   getMatchDistance,
+  removeClearedRows,
 } from './gameLogic';
 import { Board, Cell } from '../types';
 
@@ -343,5 +344,96 @@ describe('getMatchDistance', () => {
     const dist2 = getMatchDistance(board, { row: 0, col: 4 }, { row: 0, col: 0 });
     expect(dist1).toBe(dist2);
     expect(dist1).toBe(3);
+  });
+});
+
+describe('removeClearedRows', () => {
+  it('should remove a completely cleared row', () => {
+    const board = createBoard([
+      [1, 2, 3],
+      [null, null, null],
+      [4, 5, 6],
+    ]);
+    const result = removeClearedRows(board);
+    expect(result.length).toBe(2);
+    expect(result[0][0].value).toBe(1);
+    expect(result[1][0].value).toBe(4);
+  });
+
+  it('should update cell positions after row removal', () => {
+    const board = createBoard([
+      [1, 2, 3],
+      [null, null, null],
+      [4, 5, 6],
+    ]);
+    const result = removeClearedRows(board);
+
+    // Row that was at index 2 should now be at index 1
+    expect(result[1][0].position).toEqual({ row: 1, col: 0 });
+    expect(result[1][1].position).toEqual({ row: 1, col: 1 });
+    expect(result[1][2].position).toEqual({ row: 1, col: 2 });
+  });
+
+  it('should remove multiple cleared rows', () => {
+    const board = createBoard([
+      [null, null, null],
+      [1, 2, 3],
+      [null, null, null],
+      [4, 5, 6],
+      [null, null, null],
+    ]);
+    const result = removeClearedRows(board);
+    expect(result.length).toBe(2);
+    expect(result[0][0].value).toBe(1);
+    expect(result[1][0].value).toBe(4);
+  });
+
+  it('should return original board if no rows are cleared', () => {
+    const board = createBoard([
+      [1, 2, 3],
+      [4, 5, 6],
+    ]);
+    const result = removeClearedRows(board);
+    expect(result).toBe(board); // Same reference
+  });
+
+  it('should handle board with partial cleared cells (not full row)', () => {
+    const board = createBoard([
+      [1, null, 3],
+      [null, 5, null],
+    ]);
+    const result = removeClearedRows(board);
+    expect(result.length).toBe(2); // No rows removed
+    expect(result).toBe(board);
+  });
+
+  it('should handle empty board (all rows cleared)', () => {
+    const board = createBoard([
+      [null, null, null],
+      [null, null, null],
+    ]);
+    const result = removeClearedRows(board);
+    expect(result.length).toBe(0);
+  });
+
+  it('should correctly update positions for all remaining cells', () => {
+    const board = createBoard([
+      [1, 2],
+      [null, null],
+      [3, 4],
+      [null, null],
+      [5, 6],
+    ]);
+    const result = removeClearedRows(board);
+
+    expect(result.length).toBe(3);
+
+    // Check all positions are correctly updated
+    expect(result[0][0].position).toEqual({ row: 0, col: 0 });
+    expect(result[0][1].position).toEqual({ row: 0, col: 1 });
+    expect(result[1][0].position).toEqual({ row: 1, col: 0 });
+    expect(result[1][1].position).toEqual({ row: 1, col: 1 });
+    expect(result[2][0].position).toEqual({ row: 2, col: 0 });
+    expect(result[2][1].position).toEqual({ row: 2, col: 1 });
   });
 });

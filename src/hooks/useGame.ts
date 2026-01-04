@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Board, Position } from '../types';
 import { generateBoard, addRows } from '../utils/boardGenerator';
-import { canMatch, removeMatch, calculateScore, isBoardCleared } from '../utils/gameLogic';
+import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices } from '../utils/gameLogic';
+
+const ROW_CLEAR_ANIMATION_MS = 400;
 
 const INITIAL_ROWS = 10;
 const COLS = 9;
@@ -17,6 +19,7 @@ export function useGame() {
   const [selectedCell, setSelectedCell] = useState<Position | null>(null);
   const [addRowsRemaining, setAddRowsRemaining] = useState(MAX_ADD_ROWS);
   const [stageComplete, setStageComplete] = useState(false);
+  const [clearingRows, setClearingRows] = useState<number[]>([]);
 
   // Check for board cleared and show completion modal
   useEffect(() => {
@@ -55,8 +58,24 @@ export function useGame() {
         // Second selection - attempt match
         if (canMatch(board, selectedCell, position)) {
           const points = calculateScore(board, selectedCell, position);
-          setBoard(removeMatch(board, selectedCell, position));
+          const boardAfterMatch = removeMatch(board, selectedCell, position);
           setScore((s) => s + points);
+
+          // Check for cleared rows
+          const clearedIndices = getClearedRowIndices(boardAfterMatch);
+          if (clearedIndices.length > 0) {
+            // Show clearing animation first
+            setBoard(boardAfterMatch);
+            setClearingRows(clearedIndices);
+
+            // After animation, actually remove the rows
+            setTimeout(() => {
+              setClearingRows([]);
+              setBoard((currentBoard) => removeClearedRows(currentBoard));
+            }, ROW_CLEAR_ANIMATION_MS);
+          } else {
+            setBoard(boardAfterMatch);
+          }
         }
         setSelectedCell(null);
       }
@@ -87,6 +106,7 @@ export function useGame() {
     stage,
     stageComplete,
     addRowsRemaining,
+    clearingRows,
     handleCellClick,
     handleAddRows,
     handleNewGame,

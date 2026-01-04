@@ -1,5 +1,8 @@
 import { Board, Cell, Position } from '../types';
-import { hasValidPath } from './gameLogic';
+import { hasValidPath, PathOptions } from './gameLogic';
+
+/** Path options for generation - restrict diagonals to adjacent rows for row-removal safety */
+const GENERATION_PATH_OPTIONS: PathOptions = { maxDiagonalDistance: 1 };
 
 const COLS = 9;
 const ROWS = 10;
@@ -246,9 +249,9 @@ function findMatchablePositionWithDifficulty(
   const restCandidates = validCandidates.slice(topCount);
   const orderedCandidates = [...topCandidates, ...restCandidates];
 
-  // Find first valid candidate with clear path
+  // Find first valid candidate with clear path (restrict diagonals for row-removal safety)
   for (const { pos } of orderedCandidates) {
-    if (hasValidPath(board, target, pos)) {
+    if (hasValidPath(board, target, pos, GENERATION_PATH_OPTIONS)) {
       return pos;
     }
   }
@@ -260,7 +263,7 @@ function findMatchablePositionWithDifficulty(
     .sort((a, b) => b.distance - a.distance); // Farther first
 
   for (const { pos } of fallbackCandidates) {
-    if (hasValidPath(board, target, pos)) {
+    if (hasValidPath(board, target, pos, GENERATION_PATH_OPTIONS)) {
       return pos;
     }
   }
@@ -275,7 +278,7 @@ function findMatchablePositionWithDifficulty(
 
   for (const neighbor of immediateNeighbors) {
     const found = candidates.find(c => c.row === neighbor.row && c.col === neighbor.col);
-    if (found && hasValidPath(board, target, found)) {
+    if (found && hasValidPath(board, target, found, GENERATION_PATH_OPTIONS)) {
       return found;
     }
   }

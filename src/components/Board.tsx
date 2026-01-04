@@ -4,14 +4,18 @@ import { Cell } from './Cell';
 interface BoardProps {
   board: BoardType;
   selectedCell: Position | null;
+  clearingRows?: number[];
   onCellClick: (position: Position) => void;
 }
 
-export function Board({ board, selectedCell, onCellClick }: BoardProps) {
+export function Board({ board, selectedCell, clearingRows = [], onCellClick }: BoardProps) {
   return (
     <div className="board">
       {board.map((row, rowIdx) => (
-        <div key={rowIdx} className="row">
+        <div
+          key={rowIdx}
+          className={`row ${clearingRows.includes(rowIdx) ? 'row-clearing' : ''}`}
+        >
           {row.map((cell, colIdx) => (
             <Cell
               key={`${rowIdx}-${colIdx}`}

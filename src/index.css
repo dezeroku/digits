@@ -66,22 +66,53 @@ body {
 .board {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   background: rgba(255, 255, 255, 0.05);
   padding: 0.5rem;
   border-radius: 8px;
+  /* Subtle grid lines */
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .row {
   display: flex;
-  gap: 2px;
+  gap: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.row:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.row-clearing {
+  animation: rowClear 0.4s ease-out forwards;
+}
+
+.row-clearing .cell {
+  background: linear-gradient(145deg, #4ecca3, #45b393) !important;
+  box-shadow: 0 0 20px rgba(78, 204, 163, 0.6);
+}
+
+@keyframes rowClear {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
 }
 
 .cell {
   width: 38px;
   height: 38px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 1.25rem;
   font-weight: bold;
   cursor: pointer;
@@ -91,17 +122,26 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 1px;
+  /* Subtle vertical grid line */
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.08);
 }
 
-.cell:hover:not(.empty) {
+.cell:last-child {
+  box-shadow: none;
+}
+
+.cell:hover:not(.empty):not(.selected) {
   background: linear-gradient(145deg, #3a3a6a, #2e2e5a);
   transform: scale(1.05);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
 }
 
 .cell.selected {
   background: linear-gradient(145deg, #e94560, #ff6b6b);
   box-shadow: 0 0 15px rgba(233, 69, 96, 0.5);
   transform: scale(1.1);
+  z-index: 1;
 }
 
 .cell.empty {

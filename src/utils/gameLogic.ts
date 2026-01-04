@@ -52,14 +52,18 @@ function isVerticalPathClear(board: Board, from: Position, to: Position): boolea
 
 /**
  * Check if path is clear along a diagonal
+ * @param maxDistance - Optional max row/col distance for diagonal (1 = adjacent only)
  */
-function isDiagonalPathClear(board: Board, from: Position, to: Position): boolean {
+function isDiagonalPathClear(board: Board, from: Position, to: Position, maxDistance?: number): boolean {
   const rowDiff = to.row - from.row;
   const colDiff = to.col - from.col;
 
   // Must be on a diagonal (same absolute difference)
   if (Math.abs(rowDiff) !== Math.abs(colDiff)) return false;
   if (rowDiff === 0) return false; // Same cell or horizontal
+
+  // Check max distance constraint (for generation with row-removal safety)
+  if (maxDistance !== undefined && Math.abs(rowDiff) > maxDistance) return false;
 
   const rowStep = rowDiff > 0 ? 1 : -1;
   const colStep = colDiff > 0 ? 1 : -1;
@@ -111,10 +115,15 @@ function isHorizontalWrapPathClear(board: Board, from: Position, to: Position): 
   return true;
 }
 
+export interface PathOptions {
+  /** Max diagonal distance (1 = adjacent only). Used for row-removal-safe generation. */
+  maxDiagonalDistance?: number;
+}
+
 /**
  * Check if there's a valid path between two positions
  */
-export function hasValidPath(board: Board, from: Position, to: Position): boolean {
+export function hasValidPath(board: Board, from: Position, to: Position, options?: PathOptions): boolean {
   // Same position - no match
   if (from.row === to.row && from.col === to.col) return false;
 
@@ -128,8 +137,8 @@ export function hasValidPath(board: Board, from: Position, to: Position): boolea
     return true;
   }
 
-  // Check diagonal
-  if (isDiagonalPathClear(board, from, to)) {
+  // Check diagonal (with optional distance restriction)
+  if (isDiagonalPathClear(board, from, to, options?.maxDiagonalDistance)) {
     return true;
   }
 
@@ -211,4 +220,42 @@ export function calculateScore(board: Board, pos1: Position, pos2: Position): nu
  */
 export function isBoardCleared(board: Board): boolean {
   return board.every((row) => row.every((cell) => cell.value === null));
+}
+
+/**
+ * Check if a row is completely cleared (all cells are null)
+ */
+function isRowCleared(row: Cell[]): boolean {
+  return row.every((cell) => cell.value === null);
+}
+
+/**
+ * Get indices of all completely cleared rows
+ */
+export function getClearedRowIndices(board: Board): number[] {
+  return board
+    .map((row, index) => (isRowCleared(row) ? index : -1))
+    .filter((index) => index !== -1);
+}
+
+/**
+ * Remove completely cleared rows from the board and update cell positions.
+ * Returns the new board with cleared rows removed.
+ */
+export function removeClearedRows(board: Board): Board {
+  // Filter out cleared rows
+  const remainingRows = board.filter((row) => !isRowCleared(row));
+
+  // If no rows were removed, return original board
+  if (remainingRows.length === board.length) {
+    return board;
+  }
+
+  // Update positions for all cells in remaining rows
+  return remainingRows.map((row, newRowIndex) =>
+    row.map((cell, colIndex) => ({
+      ...cell,
+      position: { row: newRowIndex, col: colIndex },
+    }))
+  );
 }
