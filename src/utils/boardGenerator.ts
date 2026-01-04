@@ -387,73 +387,113 @@ function generateAdjacentPairsBoard(rows: number, cols: number): Board {
 }
 
 /**
+ * Check if a cell has any valid match on the board
+ */
+function hasValidMatch(board: Board, pos: Position): boolean {
+  const cell = board[pos.row][pos.col];
+  if (cell.value === null) return false;
+
+  for (let row = 0; row < board.length; row++) {
+    for (let col = 0; col < board[0].length; col++) {
+      if (row === pos.row && col === pos.col) continue;
+
+      const other = board[row][col];
+      if (other.value === null) continue;
+
+      // Check if values match (same or sum to 10)
+      if (cell.value === other.value || cell.value + other.value === 10) {
+        // Check if there's a valid path
+        if (hasValidPath(board, pos, { row, col })) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * Add rows that can be matched with existing board content.
- * New rows are generated as matchable pairs among themselves.
+ * New cells are generated to help rescue stuck cells on the board.
  */
 export function addRows(
   board: Board,
   count: number = 4,
   cols: number = COLS,
-  stage: number = 1
+  _stage: number = 1
 ): Board {
   const newBoard = board.map((row) => [...row]);
   const startRow = board.length;
+  const boardCols = board[0]?.length || cols;
+  const totalNewCells = count * boardCols;
 
-  // Create empty rows first
+  // Find stuck cells (cells with no valid match on current board)
+  const stuckValues: number[] = [];
+  for (let row = 0; row < startRow; row++) {
+    for (let col = 0; col < boardCols; col++) {
+      const value = board[row][col].value;
+      if (value !== null && !hasValidMatch(board, { row, col })) {
+        stuckValues.push(value);
+      }
+    }
+  }
+
+  // Build rescue pairs for stuck cells
+  const valuesToPlace: number[] = [];
+  const shuffledStuck = shuffle(stuckValues);
+
+  for (const value of shuffledStuck) {
+    if (valuesToPlace.length >= totalNewCells) break;
+
+    // Add a value that matches the stuck cell
+    const rescueValue = Math.random() < 0.5 ? value : (10 - value);
+    valuesToPlace.push(rescueValue);
+
+    if (valuesToPlace.length >= totalNewCells) break;
+
+    // Add another value that matches the rescue value (ensures self-solvability)
+    const pairValue = Math.random() < 0.5 ? rescueValue : (10 - rescueValue);
+    valuesToPlace.push(pairValue);
+  }
+
+  // Generate barrier cells (random matchable pairs) to fill remaining space
+  const barrierValues: number[] = [];
+  while (valuesToPlace.length + barrierValues.length < totalNewCells - 1) {
+    const value = Math.floor(Math.random() * 9) + 1;
+    const match = Math.random() < 0.5 ? value : (10 - value);
+    barrierValues.push(value, match);
+  }
+
+  // Handle odd cell count edge case
+  if (valuesToPlace.length + barrierValues.length < totalNewCells) {
+    barrierValues.push(Math.floor(Math.random() * 9) + 1);
+  }
+
+  // Place barrier cells first (at start of new rows), then rescue cells
+  // This makes rescue cells harder to reach - player must clear barriers first
+  const shuffledBarriers = shuffle(barrierValues);
+  const shuffledRescue = shuffle(valuesToPlace);
+  const orderedValues = [...shuffledBarriers, ...shuffledRescue].slice(0, totalNewCells);
+
+  // Add randomness so placement isn't predictable
+  // Randomly swap ~30% of positions to break the strict barrier-then-rescue pattern
+  for (let i = 0; i < orderedValues.length; i++) {
+    if (Math.random() < 0.3) {
+      const j = Math.floor(Math.random() * orderedValues.length);
+      [orderedValues[i], orderedValues[j]] = [orderedValues[j], orderedValues[i]];
+    }
+  }
+
   for (let i = 0; i < count; i++) {
     const rowCells: Cell[] = [];
-    for (let col = 0; col < cols; col++) {
+    for (let col = 0; col < boardCols; col++) {
+      const valueIndex = i * boardCols + col;
       rowCells.push({
-        value: null,
+        value: orderedValues[valueIndex],
         position: { row: startRow + i, col },
       });
     }
     newBoard.push(rowCells);
-  }
-
-  // Get positions for new rows only
-  let newPositions: Position[] = [];
-  for (let row = startRow; row < startRow + count; row++) {
-    for (let col = 0; col < cols; col++) {
-      newPositions.push({ row, col });
-    }
-  }
-  newPositions = shuffle(newPositions);
-
-  const totalPairs = newPositions.length / 2;
-  let pairIndex = 0;
-
-  // Fill new rows with matchable pairs using difficulty settings
-  while (newPositions.length >= 2) {
-    const pos1 = newPositions.shift()!;
-    const pos2 = findMatchablePositionWithDifficulty(
-      newBoard,
-      pos1,
-      newPositions,
-      stage,
-      pairIndex,
-      totalPairs
-    );
-
-    if (pos2) {
-      newPositions = newPositions.filter(
-        (p) => !(p.row === pos2.row && p.col === pos2.col)
-      );
-      // Generate values that minimize accidental adjacent matches
-      const [val1, val2] = generateBestPair(newBoard, pos1, pos2);
-      newBoard[pos1.row][pos1.col].value = val1;
-      newBoard[pos2.row][pos2.col].value = val2;
-      pairIndex++;
-    } else {
-      // Fallback: just place a random digit
-      newBoard[pos1.row][pos1.col].value = Math.floor(Math.random() * 9) + 1;
-    }
-  }
-
-  // Handle any remaining single position
-  if (newPositions.length === 1) {
-    const pos = newPositions[0];
-    newBoard[pos.row][pos.col].value = Math.floor(Math.random() * 9) + 1;
   }
 
   return newBoard;

@@ -25,6 +25,10 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
             <p>Clear entire rows to remove them from the board</p>
           </div>
           <div className="welcome-rule">
+            <span className="welcome-icon">🆘</span>
+            <p>Stuck? Use <strong>Add Rows</strong> to get new digits that match your remaining cells</p>
+          </div>
+          <div className="welcome-rule">
             <span className="welcome-icon">🏆</span>
             <p>Clear all digits to complete the stage</p>
           </div>
