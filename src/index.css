@@ -34,31 +34,122 @@ body {
   padding: 1rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 1rem;
+  position: relative;
 }
 
-.header h1 {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-title {
   font-size: 2rem;
   background: linear-gradient(90deg, #e94560, #ff6b6b);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.stage-badge {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  height: 36px;
+  line-height: 1;
+}
+
+.stage-icon {
+  transform: translateY(1px);
+}
+
+.stage-number {
+  font-weight: bold;
+}
+
+.stage-1 {
+  color: #4ecca3;
+}
+
+.stage-2 {
+  color: #6366f1;
+}
+
+.stage-3 {
+  color: #f59e0b;
+}
+
+.stage-4 {
+  color: #f97316;
+}
+
+.stage-5 {
+  color: #e94560;
+}
+
+.btn-icon {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.btn-icon:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.btn-icon:active {
+  transform: scale(0.95);
 }
 
 .scoreboard {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   font-size: 1.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.score-label {
-  color: rgba(255, 255, 255, 0.7);
+.scoreboard:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.scoreboard:active {
+  transform: scale(0.98);
+}
+
+.score-icon {
+  font-size: 1.1rem;
 }
 
 .score-value {
   font-weight: bold;
   color: #4ecca3;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
 }
 
 .main {
@@ -211,25 +302,6 @@ body {
   margin-bottom: 1rem;
 }
 
-.stage-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 20px;
-}
-
-.stage-label {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.9rem;
-}
-
-.stage-value {
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: #6366f1;
-}
 
 .controls-row {
   display: flex;
@@ -572,8 +644,19 @@ body {
 }
 
 @media (max-width: 380px) {
-  .header h1 {
+  .header-title {
     font-size: 1.5rem;
+  }
+
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  .stage-badge {
+    font-size: 1rem;
+    height: 32px;
   }
 
   .btn {

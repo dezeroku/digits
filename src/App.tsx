@@ -109,12 +109,22 @@ function App() {
         <UpdateBanner onReload={reloadApp} onDismiss={dismissUpdate} />
       )}
       <header className="header">
-        <h1>Digits!</h1>
-        <div className="stage-info">
-          <span className="stage-label">Stage</span>
-          <span className="stage-value">{stage}</span>
+        <div className="header-left">
+          <button
+            className="btn-icon"
+            onClick={handleNewGameClick}
+            aria-label="New Game"
+            title="New Game"
+          >
+            🔄
+          </button>
+          <span className="stage-badge" title={`Stage ${stage}`}>
+            <span className="stage-icon">⭐</span>
+            <span className={`stage-number stage-${Math.min(stage, 5)}`}>{stage}</span>
+          </span>
         </div>
-        <ScoreBoard score={score} />
+        <h1 className="header-title">Digits!</h1>
+        <ScoreBoard score={score} onTopScores={handleShowTopScores} />
       </header>
       <main className="main">
         <Board
@@ -131,9 +141,7 @@ function App() {
           addRowsRemaining={addRowsRemaining}
           helpRemaining={helpRemaining}
           showAddRowsHint={showAddRowsHint}
-          onNewGame={handleNewGameClick}
           onAddRows={handleAddRows}
-          onTopScores={handleShowTopScores}
           onHelp={handleHelp}
         />
         <div className="rules">

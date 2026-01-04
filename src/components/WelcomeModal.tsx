@@ -17,7 +17,7 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
             <p>The path between digits must be clear (horizontal, vertical, diagonal, or wrap-around)</p>
           </div>
           <div className="welcome-rule">
-            <span className="welcome-icon">⭐</span>
+            <span className="welcome-icon">💎</span>
             <p>Distant matches earn bonus points!</p>
           </div>
           <div className="welcome-rule">
@@ -25,12 +25,20 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
             <p>Clear entire rows to remove them from the board</p>
           </div>
           <div className="welcome-rule">
-            <span className="welcome-icon">🆘</span>
-            <p>Stuck? Use <strong>Add Rows</strong> to get new digits that match your remaining cells</p>
+            <span className="welcome-icon">❓</span>
+            <p>Need a hint? Tap <strong>❓</strong> to highlight a valid pair (3 per game)</p>
+          </div>
+          <div className="welcome-rule">
+            <span className="welcome-icon">➕</span>
+            <p>Stuck? Tap <strong>➕</strong> to add rows with rescue digits</p>
+          </div>
+          <div className="welcome-rule">
+            <span className="welcome-icon">⭐</span>
+            <p>Clear all digits to advance to the next stage</p>
           </div>
           <div className="welcome-rule">
             <span className="welcome-icon">🏆</span>
-            <p>Clear all digits to complete the stage</p>
+            <p>Tap your score to view top scores</p>
           </div>
         </div>
         <button className="btn btn-primary modal-button" onClick={onClose}>

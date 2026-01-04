@@ -1,12 +1,18 @@
 interface ScoreBoardProps {
   score: number;
+  onTopScores: () => void;
 }
 
-export function ScoreBoard({ score }: ScoreBoardProps) {
+export function ScoreBoard({ score, onTopScores }: ScoreBoardProps) {
   return (
-    <div className="scoreboard">
-      <span className="score-label">Score:</span>
+    <button
+      className="scoreboard"
+      onClick={onTopScores}
+      aria-label="View top scores"
+      title="View top scores"
+    >
+      <span className="score-icon">🏆</span>
       <span className="score-value">{score}</span>
-    </div>
+    </button>
   );
 }
