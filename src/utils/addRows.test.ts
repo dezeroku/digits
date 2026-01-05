@@ -213,6 +213,69 @@ describe('addRows - rescue mechanism', () => {
     expect(result.length).toBe(2);
   });
 
+  it('should add partial row when remaining cells < cols', () => {
+    // 2 cells remaining should add only 2 new cells (1 partial row)
+    const board = createBoard([
+      [null, null, null],
+      [3, null, 7],  // 2 cells remaining
+    ]);
+
+    const result = addRows(board, 4, 3);
+
+    // Should add 1 row with 2 filled cells and 1 null
+    expect(result.length).toBe(3);
+    const newRow = result[2];
+    const filledCells = newRow.filter(c => c.value !== null).length;
+    const nullCells = newRow.filter(c => c.value === null).length;
+    expect(filledCells).toBe(2);
+    expect(nullCells).toBe(1);
+  });
+
+  it('should add full rows + partial row for larger counts', () => {
+    // 16 cells remaining with 9-column board = 1 full row (9) + 1 partial row (7 cells, 2 nulls)
+    const board = createBoard([
+      [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      [1, 2, 3, 4, 5, 6, 7, null, null],  // 16 cells total
+    ]);
+
+    const result = addRows(board, 4, 9);
+
+    // Should add 2 rows: 1 full + 1 partial
+    expect(result.length).toBe(4);
+
+    // First new row should be full
+    const firstNewRow = result[2];
+    const firstRowFilled = firstNewRow.filter(c => c.value !== null).length;
+    expect(firstRowFilled).toBe(9);
+
+    // Second new row should have 7 cells (16 - 9 = 7)
+    const secondNewRow = result[3];
+    const secondRowFilled = secondNewRow.filter(c => c.value !== null).length;
+    const secondRowNulls = secondNewRow.filter(c => c.value === null).length;
+    expect(secondRowFilled).toBe(7);
+    expect(secondRowNulls).toBe(2);
+  });
+
+  it('should cap cells at max (count * cols)', () => {
+    // 50 cells remaining, but max is 4 * 9 = 36
+    const board: Board = [];
+    for (let row = 0; row < 6; row++) {
+      const rowCells: Cell[] = [];
+      for (let col = 0; col < 9; col++) {
+        rowCells.push({ value: 5, position: { row, col } });
+      }
+      board.push(rowCells);
+    }
+    // 54 cells remaining
+
+    const result = addRows(board, 4, 9);
+
+    // Should add exactly 36 cells (4 full rows)
+    const newCellsCount = result.slice(6).flat().filter(c => c.value !== null).length;
+    expect(newCellsCount).toBe(36);
+    expect(result.length).toBe(10); // 6 original + 4 new
+  });
+
   it('should mix barrier and rescue cells with some randomness', () => {
     // Board with 6 cells (2 stuck: 3 and 4 have no matches)
     const board = createBoard([

@@ -407,6 +407,7 @@ function hasValidMatch(board: Board, pos: Position): boolean {
  *
  * The number of new cells added equals the number of remaining cells on the board,
  * capped at count * cols (default 36 cells = 4 rows).
+ * This may result in partial rows (e.g., 2 cells remaining = 1 row with 2 cells).
  */
 export function addRows(
   board: Board,
@@ -421,15 +422,18 @@ export function addRows(
   // Count remaining cells on the board
   const remainingCells = board.flat().filter(cell => cell.value !== null).length;
 
-  // Calculate rows to add: scale with remaining cells, capped at count
-  // At least 1 row if any cells remain, up to count rows
-  const rowsToAdd = Math.min(count, Math.max(1, Math.ceil(remainingCells / boardCols)));
-  const totalNewCells = rowsToAdd * boardCols;
-
   // If board is already cleared, return unchanged
   if (remainingCells === 0) {
     return newBoard;
   }
+
+  // Add exactly as many cells as there are remaining, capped at max (count * cols)
+  const maxCells = count * boardCols;
+  const totalNewCells = Math.min(remainingCells, maxCells);
+
+  // Calculate how many full rows and partial row cells
+  const fullRows = Math.floor(totalNewCells / boardCols);
+  const partialRowCells = totalNewCells % boardCols;
 
   // Find stuck cells (cells with no valid match on current board)
   const stuckValues: number[] = [];
@@ -488,7 +492,8 @@ export function addRows(
     }
   }
 
-  for (let i = 0; i < rowsToAdd; i++) {
+  // Add full rows
+  for (let i = 0; i < fullRows; i++) {
     const rowCells: Cell[] = [];
     for (let col = 0; col < boardCols; col++) {
       const valueIndex = i * boardCols + col;
@@ -496,6 +501,28 @@ export function addRows(
         value: orderedValues[valueIndex],
         position: { row: startRow + i, col },
       });
+    }
+    newBoard.push(rowCells);
+  }
+
+  // Add partial row if needed
+  if (partialRowCells > 0) {
+    const rowCells: Cell[] = [];
+    const rowIndex = startRow + fullRows;
+    for (let col = 0; col < boardCols; col++) {
+      const valueIndex = fullRows * boardCols + col;
+      if (col < partialRowCells) {
+        rowCells.push({
+          value: orderedValues[valueIndex],
+          position: { row: rowIndex, col },
+        });
+      } else {
+        // Fill remaining cells with null
+        rowCells.push({
+          value: null,
+          position: { row: rowIndex, col },
+        });
+      }
     }
     newBoard.push(rowCells);
   }

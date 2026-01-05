@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateBoard, addRows } from './boardGenerator';
-import { canMatch, getMatchDistance, removeMatch, removeClearedRows, findValidPair, isBoardCleared, hasAnyValidMatch } from './gameLogic';
+import { canMatch, getMatchDistance, removeMatch, removeClearedRows, findValidPair, isBoardCleared } from './gameLogic';
 import { Board, Position } from '../types';
 
 /**
