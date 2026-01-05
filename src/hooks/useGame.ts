@@ -49,41 +49,54 @@ export function useGame(options: UseGameOptions = {}) {
   const [helpRemaining, setHelpRemaining] = useState(MAX_HELP);
   const [hintCells, setHintCells] = useState<Position[]>([]);
   const [showAddRowsHint, setShowAddRowsHint] = useState(false);
-  const [newRows, setNewRows] = useState<number[]>([]);
+  const [newCells, setNewCells] = useState<Position[]>([]);
   const [digitUsage, setDigitUsage] = useState<Record<number, number>>(createInitialDigitUsage);
 
   // Track when no matches became available for add rows hint
   const noMatchesTimerRef = useRef<number | null>(null);
 
-  // Track glow timeouts per row
-  const glowTimeoutsRef = useRef<Map<number, number>>(new Map());
+  // Track glow timeouts per cell (key: "row-col")
+  const glowTimeoutsRef = useRef<Map<string, number>>(new Map());
 
-  // Helper to add glow to specific rows with independent timers
-  const addGlowToRows = useCallback((rowIndices: number[]) => {
+  // Helper to create a cell key for the timeout map
+  const cellKey = (pos: Position) => `${pos.row}-${pos.col}`;
+
+  // Helper to add glow to specific cells with independent timers
+  const addGlowToCells = useCallback((cells: Position[]) => {
     if (!animationsEnabled) return;
 
-    // Add new rows to the glow set
-    setNewRows(prev => [...new Set([...prev, ...rowIndices])]);
+    // Add new cells to the glow set (avoid duplicates)
+    setNewCells(prev => {
+      const existingKeys = new Set(prev.map(p => cellKey(p)));
+      const newUnique = cells.filter(c => !existingKeys.has(cellKey(c)));
+      return [...prev, ...newUnique];
+    });
 
-    // Set individual timeouts for each row
-    rowIndices.forEach(idx => {
-      // Clear any existing timeout for this row
-      const existing = glowTimeoutsRef.current.get(idx);
+    // Set individual timeouts for each cell
+    cells.forEach(pos => {
+      const key = cellKey(pos);
+      // Clear any existing timeout for this cell
+      const existing = glowTimeoutsRef.current.get(key);
       if (existing) clearTimeout(existing);
 
       const timeoutId = window.setTimeout(() => {
-        setNewRows(prev => prev.filter(r => r !== idx));
-        glowTimeoutsRef.current.delete(idx);
+        setNewCells(prev => prev.filter(p => cellKey(p) !== key));
+        glowTimeoutsRef.current.delete(key);
       }, NEW_ROWS_GLOW_MS);
-      glowTimeoutsRef.current.set(idx, timeoutId);
+      glowTimeoutsRef.current.set(key, timeoutId);
     });
   }, [animationsEnabled]);
 
   // Glow effect for initial board on mount
   useEffect(() => {
-    const allRowIndices = Array.from({ length: INITIAL_ROWS }, (_, i) => i);
-    addGlowToRows(allRowIndices);
-  }, [addGlowToRows]);
+    const allCells: Position[] = [];
+    for (let row = 0; row < INITIAL_ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        allCells.push({ row, col });
+      }
+    }
+    addGlowToCells(allCells);
+  }, [addGlowToCells]);
 
   // Check for board cleared and show completion modal
   useEffect(() => {
@@ -167,7 +180,7 @@ export function useGame(options: UseGameOptions = {}) {
     // Clear any existing glow timeouts
     glowTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     glowTimeoutsRef.current.clear();
-    setNewRows([]);
+    setNewCells([]);
 
     const nextStage = stage + 1;
     setStage(nextStage);
@@ -176,10 +189,15 @@ export function useGame(options: UseGameOptions = {}) {
     setAddRowsRemaining(MAX_ADD_ROWS);
     setStageComplete(false);
 
-    // Glow effect for all new rows
-    const allRowIndices = Array.from({ length: INITIAL_ROWS }, (_, i) => i);
-    addGlowToRows(allRowIndices);
-  }, [stage, addGlowToRows]);
+    // Glow effect for all new cells
+    const allCells: Position[] = [];
+    for (let row = 0; row < INITIAL_ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        allCells.push({ row, col });
+      }
+    }
+    addGlowToCells(allCells);
+  }, [stage, addGlowToCells]);
 
   const handleCellClick = useCallback(
     (position: Position) => {
@@ -257,27 +275,50 @@ export function useGame(options: UseGameOptions = {}) {
     const availableDigits = getAvailableDigits(digitUsage);
     setBoard((b) => {
       const newBoard = addRows(b, ROWS_TO_ADD, COLS, stage, availableDigits);
-      // Track the indices of newly added rows (they're at the end)
+
+      const cellsToGlow: Position[] = [];
+
+      // Check if trailing cells in the last row were filled
+      if (b.length > 0 && newBoard.length >= b.length) {
+        const lastRowIdx = b.length - 1;
+        const oldLastRow = b[lastRowIdx];
+        const newLastRow = newBoard[lastRowIdx];
+
+        // Add any newly filled cells in the last row to glow
+        oldLastRow.forEach((cell, col) => {
+          if (cell.value === null && newLastRow[col]?.value !== null) {
+            cellsToGlow.push({ row: lastRowIdx, col });
+          }
+        });
+      }
+
+      // Track cells in newly added rows
       const addedRows = newBoard.length - b.length;
       if (addedRows > 0) {
-        const newRowIndices = Array.from(
-          { length: addedRows },
-          (_, i) => newBoard.length - addedRows + i
-        );
-        addGlowToRows(newRowIndices);
+        for (let rowIdx = b.length; rowIdx < newBoard.length; rowIdx++) {
+          newBoard[rowIdx].forEach((cell, col) => {
+            if (cell.value !== null) {
+              cellsToGlow.push({ row: rowIdx, col });
+            }
+          });
+        }
+      }
+
+      if (cellsToGlow.length > 0) {
+        addGlowToCells(cellsToGlow);
       }
 
       return newBoard;
     });
     setAddRowsRemaining((r) => r - 1);
     setShowAddRowsHint(false);
-  }, [addRowsRemaining, stage, addGlowToRows, soundEnabled, digitUsage]);
+  }, [addRowsRemaining, stage, addGlowToCells, soundEnabled, digitUsage]);
 
   const handleNewGame = useCallback(() => {
     // Clear any existing glow timeouts
     glowTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     glowTimeoutsRef.current.clear();
-    setNewRows([]);
+    setNewCells([]);
 
     setStage(1);
     setDigitUsage(createInitialDigitUsage());  // Reset digit usage for new game
@@ -291,10 +332,15 @@ export function useGame(options: UseGameOptions = {}) {
     setShowAddRowsHint(false);
     if (soundEnabled) playGameStartSound();
 
-    // Glow effect for all new rows
-    const allRowIndices = Array.from({ length: INITIAL_ROWS }, (_, i) => i);
-    addGlowToRows(allRowIndices);
-  }, [addGlowToRows, soundEnabled]);
+    // Glow effect for all new cells
+    const allCells: Position[] = [];
+    for (let row = 0; row < INITIAL_ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        allCells.push({ row, col });
+      }
+    }
+    addGlowToCells(allCells);
+  }, [addGlowToCells, soundEnabled]);
 
   return {
     board,
@@ -309,7 +355,7 @@ export function useGame(options: UseGameOptions = {}) {
     hintCells,
     helpRemaining,
     showAddRowsHint,
-    newRows,
+    newCells,
     handleCellClick,
     handleAddRows,
     handleNewGame,

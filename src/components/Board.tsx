@@ -7,16 +7,19 @@ interface BoardProps {
   clearingRows?: number[];
   invalidCells?: Position[];
   hintCells?: Position[];
-  newRows?: number[];
+  newCells?: Position[];
   onCellClick: (position: Position) => void;
 }
 
-export function Board({ board, selectedCell, clearingRows = [], invalidCells = [], hintCells = [], newRows = [], onCellClick }: BoardProps) {
+export function Board({ board, selectedCell, clearingRows = [], invalidCells = [], hintCells = [], newCells = [], onCellClick }: BoardProps) {
   const isInvalidCell = (row: number, col: number) =>
     invalidCells.some((p) => p.row === row && p.col === col);
 
   const isHintCell = (row: number, col: number) =>
     hintCells.some((p) => p.row === row && p.col === col);
+
+  const isNewCell = (row: number, col: number) =>
+    newCells.some((p) => p.row === row && p.col === col);
 
   return (
     <div className="board">
@@ -24,7 +27,6 @@ export function Board({ board, selectedCell, clearingRows = [], invalidCells = [
         const rowClasses = [
           'row',
           clearingRows.includes(rowIdx) ? 'row-clearing' : '',
-          newRows.includes(rowIdx) ? 'row-new' : '',
         ].filter(Boolean).join(' ');
 
         return (
@@ -42,6 +44,7 @@ export function Board({ board, selectedCell, clearingRows = [], invalidCells = [
               }
               isInvalid={isInvalidCell(rowIdx, colIdx)}
               isHint={isHintCell(rowIdx, colIdx)}
+              isNew={isNewCell(rowIdx, colIdx)}
               onClick={onCellClick}
             />
           ))}

@@ -482,10 +482,6 @@ export function addRows(
   const maxCells = count * boardCols;
   const totalNewCells = Math.min(remainingCells, maxCells);
 
-  // Calculate how many full rows and partial row cells
-  const fullRows = Math.floor(totalNewCells / boardCols);
-  const partialRowCells = totalNewCells % boardCols;
-
   // Find stuck cells (cells with no valid match on current board)
   const stuckValues: number[] = [];
   for (let row = 0; row < startRow; row++) {
@@ -566,39 +562,76 @@ export function addRows(
     }
   }
 
-  // Add full rows
-  for (let i = 0; i < fullRows; i++) {
-    const rowCells: Cell[] = [];
-    for (let col = 0; col < boardCols; col++) {
-      const valueIndex = i * boardCols + col;
-      rowCells.push({
-        value: orderedValues[valueIndex],
-        position: { row: startRow + i, col },
-      });
-    }
-    newBoard.push(rowCells);
-  }
+  let valueIdx = 0;
 
-  // Add partial row if needed
-  if (partialRowCells > 0) {
-    const rowCells: Cell[] = [];
-    const rowIndex = startRow + fullRows;
-    for (let col = 0; col < boardCols; col++) {
-      const valueIndex = fullRows * boardCols + col;
-      if (col < partialRowCells) {
-        rowCells.push({
-          value: orderedValues[valueIndex],
-          position: { row: rowIndex, col },
-        });
-      } else {
-        // Fill remaining cells with null
-        rowCells.push({
-          value: null,
-          position: { row: rowIndex, col },
-        });
+  // First, fill trailing empty cells in the last row (if any)
+  // Trailing = null cells that come AFTER the last non-null cell in the row
+  if (newBoard.length > 0) {
+    const lastRow = newBoard[newBoard.length - 1];
+
+    // Find the last non-null cell in the row
+    let lastNonNullCol = -1;
+    for (let col = boardCols - 1; col >= 0; col--) {
+      if (lastRow[col].value !== null) {
+        lastNonNullCol = col;
+        break;
       }
     }
-    newBoard.push(rowCells);
+
+    // Only fill trailing nulls if there's at least one non-null cell
+    // (i.e., trailing nulls are cells after lastNonNullCol)
+    if (lastNonNullCol >= 0 && lastNonNullCol < boardCols - 1) {
+      for (let col = lastNonNullCol + 1; col < boardCols && valueIdx < orderedValues.length; col++) {
+        lastRow[col] = {
+          value: orderedValues[valueIdx],
+          position: { row: newBoard.length - 1, col },
+        };
+        valueIdx++;
+      }
+    }
+  }
+
+  // Calculate remaining cells to add as new rows
+  const remainingToAdd = orderedValues.length - valueIdx;
+  if (remainingToAdd > 0) {
+    const newFullRows = Math.floor(remainingToAdd / boardCols);
+    const newPartialCells = remainingToAdd % boardCols;
+
+    // Add full rows
+    for (let i = 0; i < newFullRows; i++) {
+      const rowCells: Cell[] = [];
+      const rowIndex = newBoard.length;
+      for (let col = 0; col < boardCols; col++) {
+        rowCells.push({
+          value: orderedValues[valueIdx],
+          position: { row: rowIndex, col },
+        });
+        valueIdx++;
+      }
+      newBoard.push(rowCells);
+    }
+
+    // Add partial row if needed
+    if (newPartialCells > 0) {
+      const rowCells: Cell[] = [];
+      const rowIndex = newBoard.length;
+      for (let col = 0; col < boardCols; col++) {
+        if (col < newPartialCells) {
+          rowCells.push({
+            value: orderedValues[valueIdx],
+            position: { row: rowIndex, col },
+          });
+          valueIdx++;
+        } else {
+          // Fill remaining cells with null
+          rowCells.push({
+            value: null,
+            position: { row: rowIndex, col },
+          });
+        }
+      }
+      newBoard.push(rowCells);
+    }
   }
 
   return newBoard;

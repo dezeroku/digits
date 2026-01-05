@@ -232,28 +232,33 @@ describe('addRows - rescue mechanism', () => {
   });
 
   it('should add full rows + partial row for larger counts', () => {
-    // 16 cells remaining with 9-column board = 1 full row (9) + 1 partial row (7 cells, 2 nulls)
+    // 16 cells remaining with 9-column board, 2 trailing nulls in last row
     const board = createBoard([
       [1, 2, 3, 4, 5, 6, 7, 8, 9],
-      [1, 2, 3, 4, 5, 6, 7, null, null],  // 16 cells total
+      [1, 2, 3, 4, 5, 6, 7, null, null],  // 16 cells total, 2 trailing nulls
     ]);
 
     const result = addRows(board, 4, 9);
 
-    // Should add 2 rows: 1 full + 1 partial
+    // 16 cells to add:
+    // - 2 fill trailing nulls in row 1
+    // - 14 remaining: 1 full row (9) + 1 partial row (5)
     expect(result.length).toBe(4);
 
-    // First new row should be full
+    // Row 1 should now be full (trailing nulls filled)
+    expect(result[1].filter(c => c.value !== null).length).toBe(9);
+
+    // First new row (row 2) should be full
     const firstNewRow = result[2];
     const firstRowFilled = firstNewRow.filter(c => c.value !== null).length;
     expect(firstRowFilled).toBe(9);
 
-    // Second new row should have 7 cells (16 - 9 = 7)
+    // Second new row (row 3) should have 5 cells (16 - 2 - 9 = 5)
     const secondNewRow = result[3];
     const secondRowFilled = secondNewRow.filter(c => c.value !== null).length;
     const secondRowNulls = secondNewRow.filter(c => c.value === null).length;
-    expect(secondRowFilled).toBe(7);
-    expect(secondRowNulls).toBe(2);
+    expect(secondRowFilled).toBe(5);
+    expect(secondRowNulls).toBe(4);
   });
 
   it('should cap cells at max (count * cols)', () => {
@@ -274,6 +279,62 @@ describe('addRows - rescue mechanism', () => {
     const newCellsCount = result.slice(6).flat().filter(c => c.value !== null).length;
     expect(newCellsCount).toBe(36);
     expect(result.length).toBe(10); // 6 original + 4 new
+  });
+
+  it('should fill trailing empty cells in last row first', () => {
+    // Board with trailing nulls in last row
+    const board = createBoard([
+      [1, 2, 3],
+      [4, null, null],  // 2 trailing nulls
+    ]);
+
+    const result = addRows(board, 4, 3);
+
+    // 4 remaining cells -> add 4 cells total
+    // 2 fill the trailing nulls, 2 go to a new partial row
+    expect(result[1][0].value).toBe(4);  // Original value preserved
+    expect(result[1][1].value).not.toBeNull();  // Filled (trailing null)
+    expect(result[1][2].value).not.toBeNull();  // Filled (trailing null)
+
+    // New row added with remaining 2 cells
+    expect(result.length).toBe(3);
+    expect(result[2].filter(c => c.value !== null).length).toBe(2);
+  });
+
+  it('should fill trailing nulls then add partial row for remaining cells', () => {
+    // Board with 1 trailing null, 5 remaining cells
+    const board = createBoard([
+      [1, 2, 3],
+      [4, 5, null],  // 1 trailing null
+    ]);
+
+    const result = addRows(board, 4, 3);
+
+    // 5 remaining cells -> add 5 cells
+    // 1 fills the trailing null, 4 go to new rows (1 full + 1 cell)
+    expect(result[1][2].value).not.toBeNull();  // Trailing null filled
+    expect(result.length).toBe(4);  // Original 2 + 2 new rows
+
+    // First new row should be full
+    expect(result[2].filter(c => c.value !== null).length).toBe(3);
+
+    // Second new row should have 1 cell
+    expect(result[3].filter(c => c.value !== null).length).toBe(1);
+  });
+
+  it('should not fill non-trailing nulls (middle nulls)', () => {
+    // Board with a null in the middle, not trailing
+    const board = createBoard([
+      [1, 2, 3],
+      [4, null, 6],  // Middle null, not trailing
+    ]);
+
+    const result = addRows(board, 4, 3);
+
+    // 5 remaining cells -> add 5 cells
+    // Middle null should NOT be filled (it's not trailing)
+    expect(result[1][1].value).toBeNull();  // Middle null preserved
+    expect(result.length).toBe(4);  // Original 2 + 2 new rows
   });
 
   it('should mix barrier and rescue cells with some randomness', () => {

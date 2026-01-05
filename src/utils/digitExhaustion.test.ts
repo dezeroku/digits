@@ -99,6 +99,7 @@ describe('Digit Exhaustion - addRows', () => {
 
   it('should still try to rescue stuck cells with available digits', () => {
     // Board with stuck 3 (no 3 or 7 available to match)
+    // Trailing nulls will be filled first
     const board = createBoard([
       [3, null, null],
     ]);
@@ -107,16 +108,17 @@ describe('Digit Exhaustion - addRows', () => {
     const availableDigits = [7];
     const result = addRows(board, 1, 3, 1, availableDigits);
 
-    // Should have added a row
-    expect(result.length).toBe(2);
+    // 1 remaining cell -> add 1 cell
+    // Fills the trailing null at position 1 (no new row needed)
+    expect(result.length).toBe(1);
 
-    // New row should contain 7s (to rescue the 3)
-    const newRowDigits = result[1].map(c => c.value).filter((v): v is number => v !== null);
-    expect(newRowDigits.some(d => d === 7)).toBe(true);
+    // The trailing null should be filled with 7 (to rescue the 3)
+    expect(result[0][1].value).toBe(7);
   });
 
   it('should skip rescue if stuck cell has no available match', () => {
     // Board with stuck 3, but neither 3 nor 7 available
+    // Trailing nulls will be filled first
     const board = createBoard([
       [3, null, null],
     ]);
@@ -125,13 +127,13 @@ describe('Digit Exhaustion - addRows', () => {
     const availableDigits = [1, 9];
     const result = addRows(board, 1, 3, 1, availableDigits);
 
-    // Should still add rows with available digits (barrier pairs)
-    expect(result.length).toBe(2);
+    // 1 remaining cell -> add 1 cell
+    // Fills the trailing null at position 1 (no new row needed)
+    expect(result.length).toBe(1);
 
-    const newRowDigits = result[1].map(c => c.value).filter((v): v is number => v !== null);
-    for (const d of newRowDigits) {
-      expect([1, 9]).toContain(d);
-    }
+    // Filled with available digit (1 or 9)
+    const filledValue = result[0][1].value;
+    expect([1, 9]).toContain(filledValue);
   });
 });
 

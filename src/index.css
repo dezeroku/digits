@@ -206,22 +206,26 @@ body {
   box-shadow: 0 0 20px rgba(78, 204, 163, 0.6);
 }
 
-.row-new {
-  animation: rowGlow 2s ease-in-out;
+.cell.new {
+  animation: cellGlow 2s ease-in-out;
 }
 
-@keyframes rowGlow {
+@keyframes cellGlow {
   0% {
-    background: rgba(78, 204, 163, 0.12);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 15px rgba(78, 204, 163, 0.5);
+    border-color: rgba(78, 204, 163, 0.8);
   }
   50% {
-    background: rgba(78, 204, 163, 0.35);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 25px rgba(78, 204, 163, 0.8);
+    border-color: rgba(78, 204, 163, 1);
   }
   90% {
-    background: rgba(78, 204, 163, 0.03);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 5px rgba(78, 204, 163, 0.2);
+    border-color: rgba(255, 255, 255, 0.15);
   }
   100% {
-    background: transparent;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 }
 
