@@ -123,27 +123,29 @@ function App() {
         <div className="header-left">
           <button
             className="btn-icon"
-            onClick={handleNewGameClick}
-            aria-label="New Game"
-            title="New Game"
-          >
-            🔄
-          </button>
-          <span className="stage-badge" title={`Stage ${stage}`}>
-            <span className="stage-icon">⭐</span>
-            <span className={`stage-number stage-${Math.min(stage, 5)}`}>{stage}</span>
-          </span>
-        </div>
-        <h1 className="header-title">Digits!</h1>
-        <div className="header-right">
-          <button
-            className="btn-icon"
             onClick={() => setShowSettings(true)}
             aria-label="Settings"
             title="Settings"
           >
             ⚙️
           </button>
+          <button
+            className="btn-icon"
+            onClick={handleNewGameClick}
+            aria-label="New Game"
+            title="New Game"
+          >
+            🔄
+          </button>
+        </div>
+        <div className="header-center">
+          <h1 className="header-title">Digits!</h1>
+          <span className="stage-badge" title={`Stage ${stage}`}>
+            <span className="stage-icon">⭐</span>
+            <span className={`stage-number stage-${Math.min(stage, 5)}`}>{stage}</span>
+          </span>
+        </div>
+        <div className="header-right">
           <ScoreBoard score={score} onTopScores={handleShowTopScores} />
         </div>
       </header>
