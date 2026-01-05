@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Board, Position } from '../types';
 import { generateBoard, addRows } from '../utils/boardGenerator';
 import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices, getMatchDistance, hasAnyValidMatch, findValidPair } from '../utils/gameLogic';
-import { playMatchSound, playRowClearSound, playStageCompleteSound, playInvalidMatchSound, playGameStartSound } from '../utils/sounds';
+import { playMatchSound, playRowClearSound, playStageCompleteSound, playInvalidMatchSound, playGameStartSound, playAddRowsSound, playHintSound } from '../utils/sounds';
 
 const ROW_CLEAR_ANIMATION_MS = 400;
 const INVALID_ANIMATION_MS = 400;
@@ -138,6 +138,8 @@ export function useGame(options: UseGameOptions = {}) {
       return;
     }
 
+    if (soundEnabled) playHintSound();
+
     setHelpRemaining((h) => h - 1);
     setHintCells(pair);
     setSelectedCell(null);
@@ -145,7 +147,7 @@ export function useGame(options: UseGameOptions = {}) {
     setTimeout(() => {
       setHintCells([]);
     }, HINT_ANIMATION_MS);
-  }, [board, helpRemaining, addRowsRemaining]);
+  }, [board, helpRemaining, addRowsRemaining, soundEnabled]);
 
   // Handle continuing to next stage
   const handleContinue = useCallback(() => {
@@ -227,6 +229,8 @@ export function useGame(options: UseGameOptions = {}) {
   const handleAddRows = useCallback(() => {
     if (addRowsRemaining <= 0) return;
 
+    if (soundEnabled) playAddRowsSound();
+
     setBoard((b) => {
       const newBoard = addRows(b, ROWS_TO_ADD, COLS, stage);
       // Track the indices of newly added rows (they're at the end)
@@ -240,7 +244,7 @@ export function useGame(options: UseGameOptions = {}) {
     });
     setAddRowsRemaining((r) => r - 1);
     setShowAddRowsHint(false);
-  }, [addRowsRemaining, stage, addGlowToRows]);
+  }, [addRowsRemaining, stage, addGlowToRows, soundEnabled]);
 
   const handleNewGame = useCallback(() => {
     // Clear any existing glow timeouts

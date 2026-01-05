@@ -6,8 +6,8 @@
 let audioContext: AudioContext | null = null;
 
 // Track active sounds to prevent collisions
-type SoundPriority = 'match' | 'rowClear' | 'stageComplete' | 'gameStart' | 'gameOver';
-const PRIORITY_ORDER: SoundPriority[] = ['match', 'rowClear', 'stageComplete', 'gameStart', 'gameOver'];
+type SoundPriority = 'match' | 'rowClear' | 'addRows' | 'hint' | 'stageComplete' | 'gameStart' | 'gameOver';
+const PRIORITY_ORDER: SoundPriority[] = ['match', 'rowClear', 'addRows', 'hint', 'stageComplete', 'gameStart', 'gameOver'];
 
 let activeSounds: { nodes: AudioNode[]; priority: SoundPriority } | null = null;
 let activeTimeouts: number[] = [];
@@ -445,6 +445,102 @@ export function playHighScoreSound(): void {
     }, 550);
 
     registerSound(allNodes, 'gameOver', 1400);
+  } catch {
+    // Audio not supported or blocked - fail silently
+  }
+}
+
+/**
+ * Play an add rows sound - whooshing drop effect
+ */
+export function playAddRowsSound(): void {
+  try {
+    if (!canPlaySound('addRows')) return;
+    stopActiveSounds();
+
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+    const allNodes: AudioNode[] = [];
+
+    // Descending whoosh (rows dropping in)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(600, now);
+    osc1.frequency.exponentialRampToValueAtTime(200, now + 0.25);
+
+    gain1.gain.setValueAtTime(0.15, now);
+    gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+    osc1.start(now);
+    osc1.stop(now + 0.3);
+    allNodes.push(osc1, gain1);
+
+    // Add a soft thud at the end
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(80, now + 0.2);
+
+    gain2.gain.setValueAtTime(0, now + 0.2);
+    gain2.gain.linearRampToValueAtTime(0.2, now + 0.22);
+    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+
+    osc2.start(now + 0.2);
+    osc2.stop(now + 0.4);
+    allNodes.push(osc2, gain2);
+
+    registerSound(allNodes, 'addRows', 400);
+  } catch {
+    // Audio not supported or blocked - fail silently
+  }
+}
+
+/**
+ * Play a hint sound - soft helpful chime
+ */
+export function playHintSound(): void {
+  try {
+    if (!canPlaySound('hint')) return;
+    stopActiveSounds();
+
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+    const allNodes: AudioNode[] = [];
+
+    // Two-note chime (ascending)
+    const notes = [523.25, 659.25]; // C5, E5
+    const delays = [0, 0.1];
+
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + delays[i]);
+
+      gain.gain.setValueAtTime(0, now + delays[i]);
+      gain.gain.linearRampToValueAtTime(0.15, now + delays[i] + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + delays[i] + 0.25);
+
+      osc.start(now + delays[i]);
+      osc.stop(now + delays[i] + 0.25);
+
+      allNodes.push(osc, gain);
+    });
+
+    registerSound(allNodes, 'hint', 350);
   } catch {
     // Audio not supported or blocked - fail silently
   }

@@ -131,19 +131,6 @@ function createEmptyBoard(rows: number, cols: number): Board {
 }
 
 /**
- * Get all positions on the board
- */
-function getAllPositions(rows: number, cols: number): Position[] {
-  const positions: Position[] = [];
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      positions.push({ row, col });
-    }
-  }
-  return positions;
-}
-
-/**
  * Shuffle array in place (Fisher-Yates)
  */
 function shuffle<T>(array: T[]): T[] {
@@ -153,15 +140,6 @@ function shuffle<T>(array: T[]): T[] {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
-}
-
-/**
- * Calculate Manhattan distance between two positions in 1D (wrap-around) space
- */
-function getLinearDistance(a: Position, b: Position, cols: number): number {
-  const aIdx = a.row * cols + a.col;
-  const bIdx = b.row * cols + b.col;
-  return Math.abs(aIdx - bIdx);
 }
 
 /**
@@ -369,136 +347,6 @@ function verifyBoardSolvable(board: Board): boolean {
   }
 
   return false;
-}
-
-/**
- * Create a unique key for a pair of positions (order-independent)
- */
-function positionPairKey(pos1: Position, pos2: Position): string {
-  const key1 = `${pos1.row},${pos1.col}`;
-  const key2 = `${pos2.row},${pos2.col}`;
-  return key1 < key2 ? `${key1}-${key2}` : `${key2}-${key1}`;
-}
-
-/**
- * Find valid pair placement, excluding already-tried placements.
- */
-function findValidPairPlacementWithExclusions(
-  board: Board,
-  emptyPositions: Position[],
-  rows: number,
-  cols: number,
-  stage: number,
-  pairIndex: number,
-  totalPairs: number,
-  excludedPlacements: Set<string>
-): { pos1: Position; pos2: Position } | null {
-  const totalCells = rows * cols;
-  const config = getDifficultyConfig(stage);
-  const progress = pairIndex / totalPairs;
-
-  // Early pairs should be far apart; later pairs can be closer as needed
-  // This creates interesting boards where players must clear nearby pairs first
-  const fillFactor = progress > 0.6 ? (progress - 0.6) / 0.4 : 0;
-  const relaxFactor = 1 - fillFactor * 0.95; // Relax more aggressively near the end
-
-  // For easy mode (stage 1), still prefer some distance variety
-  // For hard mode, prefer much farther pairs
-  const baseMinRatio = 0.05; // At least 5% of board apart (4-5 cells)
-  const effectiveMinRatio = config.preferFar
-    ? Math.max(baseMinRatio, config.minDistanceRatio * (1 - progress * 0.8)) * relaxFactor
-    : baseMinRatio * relaxFactor;
-  const effectiveMaxRatio = config.preferFar
-    ? config.maxDistanceRatio * (1 - progress * 0.5)
-    : config.maxDistanceRatio;
-
-  const minDistance = Math.floor(totalCells * effectiveMinRatio);
-  const maxDistance = Math.floor(totalCells * effectiveMaxRatio);
-
-  // Strongly prefer non-adjacent placements early in generation
-  // This is key to avoiding too many adjacent pairs
-  const adjacentPenalty = Math.max(0, 50 * (1 - progress * 2)); // 50 early, 0 after 50%
-
-  // Collect candidates efficiently
-  const MAX_CANDIDATES = 100; // More candidates for better backtracking options
-  const candidates: Array<{
-    pos1: Position;
-    pos2: Position;
-    distance: number;
-    aligned: boolean;
-    score: number;
-  }> = [];
-
-  // Try positions in shuffled order for variety
-  const shuffledPositions = shuffle([...emptyPositions]);
-
-  for (let i = 0; i < shuffledPositions.length && candidates.length < MAX_CANDIDATES; i++) {
-    const pos1 = shuffledPositions[i];
-
-    for (let j = i + 1; j < shuffledPositions.length && candidates.length < MAX_CANDIDATES; j++) {
-      const pos2 = shuffledPositions[j];
-
-      // Skip already-tried placements
-      if (excludedPlacements.has(positionPairKey(pos1, pos2))) {
-        continue;
-      }
-
-      // Quick distance check
-      const distance = getLinearDistance(pos1, pos2, cols);
-
-      // Check if there's a valid path
-      if (hasValidPath(board, pos1, pos2)) {
-        const aligned = pos1.col === pos2.col || pos1.row === pos2.row;
-        const isAdjacent = distance <= 1;
-
-        // Calculate score (lower is better)
-        let score = 0;
-
-        // Penalize pairs outside preferred distance range
-        if (distance < minDistance) score += 50;
-        if (distance > maxDistance) score += 25; // Less penalty for too-far
-
-        // Strongly penalize adjacent pairs early in generation
-        if (isAdjacent) score += adjacentPenalty;
-
-        // Moderate penalty for aligned (same row/col) to reduce cascades
-        if (aligned) score += 10;
-
-        // Distance preference based on difficulty
-        if (config.preferFar) score -= distance * 2; // Stronger preference for far
-        else score += distance;
-
-        candidates.push({ pos1, pos2, distance, aligned, score });
-      }
-    }
-  }
-
-  if (candidates.length === 0) {
-    // Fallback: find ANY valid pair, even adjacent ones
-    // This is better than failing entirely
-    for (let i = 0; i < shuffledPositions.length; i++) {
-      const pos1 = shuffledPositions[i];
-      for (let j = i + 1; j < shuffledPositions.length; j++) {
-        const pos2 = shuffledPositions[j];
-        if (excludedPlacements.has(positionPairKey(pos1, pos2))) continue;
-        if (hasValidPath(board, pos1, pos2)) {
-          return { pos1, pos2 };
-        }
-      }
-    }
-    // Truly no valid pairs - show the isolated positions
-    if (emptyPositions.length <= 12) {
-      console.log(`[ISOLATED] Positions: ${emptyPositions.map(p => `(${p.row},${p.col})`).join(' ')}`);
-    }
-    return null;
-  }
-
-  // Sort by score and pick from top candidates
-  candidates.sort((a, b) => a.score - b.score);
-  const topCount = Math.min(10, candidates.length);
-  const selectedIdx = Math.floor(Math.random() * topCount);
-
-  return candidates[selectedIdx];
 }
 
 /**
