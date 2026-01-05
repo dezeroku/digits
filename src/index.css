@@ -192,6 +192,48 @@ body {
   box-shadow: 0 0 20px rgba(78, 204, 163, 0.6);
 }
 
+.row-new {
+  animation: rowGlow 2s ease-in-out;
+}
+
+.row-new .cell:not(.empty) {
+  animation: cellGlow 2s ease-in-out forwards;
+}
+
+@keyframes rowGlow {
+  0% {
+    background: rgba(78, 204, 163, 0.05);
+  }
+  50% {
+    background: rgba(78, 204, 163, 0.18);
+  }
+  90% {
+    background: rgba(78, 204, 163, 0.01);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes cellGlow {
+  0% {
+    box-shadow: 0 0 2px rgba(78, 204, 163, 0.1);
+    background: linear-gradient(145deg, #2a3238, #1e2830);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(78, 204, 163, 0.7);
+    background: linear-gradient(145deg, #2a5548, #1e453a);
+  }
+  90% {
+    box-shadow: 0 0 1px rgba(78, 204, 163, 0.05);
+    background: linear-gradient(145deg, #2a2d48, #1e2039);
+  }
+  100% {
+    box-shadow: none;
+    background: linear-gradient(145deg, #2a2a4a, #1e1e3a);
+  }
+}
+
 @keyframes rowClear {
   0% {
     transform: scale(1);

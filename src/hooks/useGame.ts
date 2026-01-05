@@ -8,6 +8,7 @@ const ROW_CLEAR_ANIMATION_MS = 400;
 const INVALID_ANIMATION_MS = 400;
 const HINT_ANIMATION_MS = 1500;
 const ADD_ROWS_HINT_DELAY_MS = 30 * 1000;
+const NEW_ROWS_GLOW_MS = 2000;
 
 const INITIAL_ROWS = 10;
 const COLS = 9;
@@ -30,9 +31,38 @@ export function useGame() {
   const [helpRemaining, setHelpRemaining] = useState(MAX_HELP);
   const [hintCells, setHintCells] = useState<Position[]>([]);
   const [showAddRowsHint, setShowAddRowsHint] = useState(false);
+  const [newRows, setNewRows] = useState<number[]>([]);
 
   // Track when no matches became available for add rows hint
   const noMatchesTimerRef = useRef<number | null>(null);
+
+  // Track glow timeouts per row
+  const glowTimeoutsRef = useRef<Map<number, number>>(new Map());
+
+  // Helper to add glow to specific rows with independent timers
+  const addGlowToRows = useCallback((rowIndices: number[]) => {
+    // Add new rows to the glow set
+    setNewRows(prev => [...new Set([...prev, ...rowIndices])]);
+
+    // Set individual timeouts for each row
+    rowIndices.forEach(idx => {
+      // Clear any existing timeout for this row
+      const existing = glowTimeoutsRef.current.get(idx);
+      if (existing) clearTimeout(existing);
+
+      const timeoutId = window.setTimeout(() => {
+        setNewRows(prev => prev.filter(r => r !== idx));
+        glowTimeoutsRef.current.delete(idx);
+      }, NEW_ROWS_GLOW_MS);
+      glowTimeoutsRef.current.set(idx, timeoutId);
+    });
+  }, []);
+
+  // Glow effect for initial board on mount
+  useEffect(() => {
+    const allRowIndices = Array.from({ length: INITIAL_ROWS }, (_, i) => i);
+    addGlowToRows(allRowIndices);
+  }, [addGlowToRows]);
 
   // Check for board cleared and show completion modal
   useEffect(() => {
@@ -111,12 +141,21 @@ export function useGame() {
 
   // Handle continuing to next stage
   const handleContinue = useCallback(() => {
+    // Clear any existing glow timeouts
+    glowTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+    glowTimeoutsRef.current.clear();
+    setNewRows([]);
+
     const nextStage = stage + 1;
     setStage(nextStage);
     setBoard(generateBoard({ rows: INITIAL_ROWS, cols: COLS, stage: nextStage }));
     setAddRowsRemaining(MAX_ADD_ROWS);
     setStageComplete(false);
-  }, [stage]);
+
+    // Glow effect for all new rows
+    const allRowIndices = Array.from({ length: INITIAL_ROWS }, (_, i) => i);
+    addGlowToRows(allRowIndices);
+  }, [stage, addGlowToRows]);
 
   const handleCellClick = useCallback(
     (position: Position) => {
@@ -180,12 +219,27 @@ export function useGame() {
   const handleAddRows = useCallback(() => {
     if (addRowsRemaining <= 0) return;
 
-    setBoard((b) => addRows(b, ROWS_TO_ADD, COLS, stage));
+    setBoard((b) => {
+      const newBoard = addRows(b, ROWS_TO_ADD, COLS, stage);
+      // Track the indices of newly added rows (they're at the end)
+      const newRowIndices = Array.from(
+        { length: ROWS_TO_ADD },
+        (_, i) => newBoard.length - ROWS_TO_ADD + i
+      );
+      addGlowToRows(newRowIndices);
+
+      return newBoard;
+    });
     setAddRowsRemaining((r) => r - 1);
     setShowAddRowsHint(false);
-  }, [addRowsRemaining, stage]);
+  }, [addRowsRemaining, stage, addGlowToRows]);
 
   const handleNewGame = useCallback(() => {
+    // Clear any existing glow timeouts
+    glowTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+    glowTimeoutsRef.current.clear();
+    setNewRows([]);
+
     setStage(1);
     setBoard(generateBoard({ rows: INITIAL_ROWS, cols: COLS, stage: 1 }));
     setScore(0);
@@ -196,7 +250,11 @@ export function useGame() {
     setHelpRemaining(MAX_HELP);
     setShowAddRowsHint(false);
     playGameStartSound();
-  }, []);
+
+    // Glow effect for all new rows
+    const allRowIndices = Array.from({ length: INITIAL_ROWS }, (_, i) => i);
+    addGlowToRows(allRowIndices);
+  }, [addGlowToRows]);
 
   return {
     board,
@@ -211,6 +269,7 @@ export function useGame() {
     hintCells,
     helpRemaining,
     showAddRowsHint,
+    newRows,
     handleCellClick,
     handleAddRows,
     handleNewGame,

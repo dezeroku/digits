@@ -29,6 +29,7 @@ function App() {
     hintCells,
     helpRemaining,
     showAddRowsHint,
+    newRows,
     handleCellClick,
     handleAddRows,
     handleNewGame,
@@ -133,6 +134,7 @@ function App() {
           clearingRows={clearingRows}
           invalidCells={invalidCells}
           hintCells={hintCells}
+          newRows={newRows}
           onCellClick={handleCellClick}
         />
       </main>

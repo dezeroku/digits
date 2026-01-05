@@ -7,10 +7,11 @@ interface BoardProps {
   clearingRows?: number[];
   invalidCells?: Position[];
   hintCells?: Position[];
+  newRows?: number[];
   onCellClick: (position: Position) => void;
 }
 
-export function Board({ board, selectedCell, clearingRows = [], invalidCells = [], hintCells = [], onCellClick }: BoardProps) {
+export function Board({ board, selectedCell, clearingRows = [], invalidCells = [], hintCells = [], newRows = [], onCellClick }: BoardProps) {
   const isInvalidCell = (row: number, col: number) =>
     invalidCells.some((p) => p.row === row && p.col === col);
 
@@ -19,10 +20,17 @@ export function Board({ board, selectedCell, clearingRows = [], invalidCells = [
 
   return (
     <div className="board">
-      {board.map((row, rowIdx) => (
+      {board.map((row, rowIdx) => {
+        const rowClasses = [
+          'row',
+          clearingRows.includes(rowIdx) ? 'row-clearing' : '',
+          newRows.includes(rowIdx) ? 'row-new' : '',
+        ].filter(Boolean).join(' ');
+
+        return (
         <div
           key={rowIdx}
-          className={`row ${clearingRows.includes(rowIdx) ? 'row-clearing' : ''}`}
+          className={rowClasses}
         >
           {row.map((cell, colIdx) => (
             <Cell
@@ -38,7 +46,8 @@ export function Board({ board, selectedCell, clearingRows = [], invalidCells = [
             />
           ))}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
