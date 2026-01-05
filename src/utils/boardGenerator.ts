@@ -1,8 +1,8 @@
 import { Board, Cell, Position } from '../types';
 import { hasValidPath, PathOptions } from './gameLogic';
 
-/** Path options for generation - restrict diagonals to adjacent rows for row-removal safety */
-const GENERATION_PATH_OPTIONS: PathOptions = { maxDiagonalDistance: 1 };
+/** Path options for addRows - restrict diagonals to adjacent rows for row-removal safety */
+const ADDROWS_PATH_OPTIONS: PathOptions = { maxDiagonalDistance: 1 };
 
 const COLS = 9;
 const ROWS = 10;
@@ -249,9 +249,9 @@ function findMatchablePositionWithDifficulty(
   const restCandidates = validCandidates.slice(topCount);
   const orderedCandidates = [...topCandidates, ...restCandidates];
 
-  // Find first valid candidate with clear path (restrict diagonals for row-removal safety)
+  // Find first valid candidate with clear path
   for (const { pos } of orderedCandidates) {
-    if (hasValidPath(board, target, pos, GENERATION_PATH_OPTIONS)) {
+    if (hasValidPath(board, target, pos)) {
       return pos;
     }
   }
@@ -263,7 +263,7 @@ function findMatchablePositionWithDifficulty(
     .sort((a, b) => b.distance - a.distance); // Farther first
 
   for (const { pos } of fallbackCandidates) {
-    if (hasValidPath(board, target, pos, GENERATION_PATH_OPTIONS)) {
+    if (hasValidPath(board, target, pos)) {
       return pos;
     }
   }
@@ -278,7 +278,7 @@ function findMatchablePositionWithDifficulty(
 
   for (const neighbor of immediateNeighbors) {
     const found = candidates.find(c => c.row === neighbor.row && c.col === neighbor.col);
-    if (found && hasValidPath(board, target, found, GENERATION_PATH_OPTIONS)) {
+    if (found && hasValidPath(board, target, found)) {
       return found;
     }
   }
@@ -402,8 +402,8 @@ function hasValidMatch(board: Board, pos: Position): boolean {
 
       // Check if values match (same or sum to 10)
       if (cell.value === other.value || cell.value + other.value === 10) {
-        // Check if there's a valid path
-        if (hasValidPath(board, pos, { row, col })) {
+        // Check if there's a valid path (restrict diagonals to adjacent for row-removal safety)
+        if (hasValidPath(board, pos, { row, col }, ADDROWS_PATH_OPTIONS)) {
           return true;
         }
       }
