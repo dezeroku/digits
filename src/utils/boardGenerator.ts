@@ -19,6 +19,7 @@ export interface GeneratorOptions {
   rows?: number;
   cols?: number;
   stage?: number;
+  availableDigits?: number[];  // Digits that can be used (default: 1-9)
 }
 
 /**
@@ -71,19 +72,48 @@ function countAdjacentMatches(
   return count;
 }
 
+/** All digits 1-9 */
+const ALL_DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
 /**
- * Generate a matching pair that balances variety with minimizing adjacent matches
+ * Generate all valid matching pairs from available digits.
+ * A valid pair is either same digit or sums to 10.
+ */
+function getValidPairs(availableDigits: number[]): [number, number][] {
+  const pairs: [number, number][] = [];
+  const digitSet = new Set(availableDigits);
+
+  for (const d1 of availableDigits) {
+    // Same digit pairs
+    pairs.push([d1, d1]);
+
+    // Sum-to-10 pairs
+    const complement = 10 - d1;
+    if (complement !== d1 && complement >= 1 && complement <= 9 && digitSet.has(complement)) {
+      pairs.push([d1, complement]);
+    }
+  }
+
+  return pairs;
+}
+
+/**
+ * Generate a matching pair that balances variety with minimizing adjacent matches.
+ * Only uses digits from availableDigits.
  */
 function generateBestPair(
   board: Board,
   pos1: Position,
-  pos2: Position
+  pos2: Position,
+  availableDigits: number[] = ALL_DIGITS
 ): [number, number] {
-  // All possible matching pairs - shuffle for variety
-  const allPairs: [number, number][] = shuffle([
-    [1, 9], [9, 1], [2, 8], [8, 2], [3, 7], [7, 3], [4, 6], [6, 4], [5, 5],
-    [1, 1], [2, 2], [3, 3], [4, 4], [6, 6], [7, 7], [8, 8], [9, 9],
-  ]);
+  // Get all valid matching pairs from available digits, then shuffle for variety
+  const allPairs = shuffle(getValidPairs(availableDigits));
+
+  if (allPairs.length === 0) {
+    // Fallback if no pairs available (shouldn't happen in normal play)
+    throw new Error('No available digit pairs');
+  }
 
   // Collect candidates with their scores
   const candidates: Array<{ pair: [number, number]; score: number }> = [];
@@ -93,10 +123,12 @@ function generateBestPair(
     const score2 = countAdjacentMatches(board, pos2, val2);
     candidates.push({ pair: [val1, val2], score: score1 + score2 });
 
-    // Also try swapped
-    const score1Swap = countAdjacentMatches(board, pos1, val2);
-    const score2Swap = countAdjacentMatches(board, pos2, val1);
-    candidates.push({ pair: [val2, val1], score: score1Swap + score2Swap });
+    // Also try swapped (if different values)
+    if (val1 !== val2) {
+      const score1Swap = countAdjacentMatches(board, pos1, val2);
+      const score2Swap = countAdjacentMatches(board, pos2, val1);
+      candidates.push({ pair: [val2, val1], score: score1Swap + score2Swap });
+    }
   }
 
   // Sort by score (lower is better)
@@ -172,6 +204,7 @@ export function generateBoard(options: GeneratorOptions = {}): Board {
     rows = ROWS,
     cols = COLS,
     stage = 1,
+    availableDigits = ALL_DIGITS,
   } = options;
 
   const totalCells = rows * cols;
@@ -179,9 +212,15 @@ export function generateBoard(options: GeneratorOptions = {}): Board {
     throw new Error('Board must have even number of cells');
   }
 
+  // Ensure we have valid pairs available
+  const validPairs = getValidPairs(availableDigits);
+  if (validPairs.length === 0) {
+    throw new Error('No valid digit pairs available');
+  }
+
   // Try the difficulty-based algorithm with backtracking
   for (let attempt = 0; attempt < 50; attempt++) {
-    const result = tryGenerateSolvableBoard(rows, cols, stage);
+    const result = tryGenerateSolvableBoard(rows, cols, stage, availableDigits);
     if (result) {
       // console.log(`[BoardGen] Success on attempt ${attempt + 1}`);
       return result;
@@ -190,7 +229,7 @@ export function generateBoard(options: GeneratorOptions = {}): Board {
 
   // Fallback: generate pairs in adjacent positions (always solvable)
   // This is expected for harder difficulties (stage 7+) where large gaps are harder to achieve
-  return generateAdjacentPairsBoard(rows, cols);
+  return generateAdjacentPairsBoard(rows, cols, availableDigits);
 }
 
 /**
@@ -209,7 +248,8 @@ export function generateBoard(options: GeneratorOptions = {}): Board {
 function tryGenerateSolvableBoard(
   rows: number,
   cols: number,
-  stage: number
+  stage: number,
+  availableDigits: number[] = ALL_DIGITS
 ): Board | null {
   const board = createEmptyBoard(rows, cols);
   const totalCells = rows * cols;
@@ -299,7 +339,7 @@ function tryGenerateSolvableBoard(
         const pos2 = snakePositions[snakeIdx2];
 
         // Place the pair
-        const [val1, val2] = generateBestPair(board, pos1, pos2);
+        const [val1, val2] = generateBestPair(board, pos1, pos2, availableDigits);
         board[pos1.row][pos1.col].value = val1;
         board[pos2.row][pos2.col].value = val2;
 
@@ -354,9 +394,14 @@ function verifyBoardSolvable(board: Board): boolean {
  * Pairs cells in linear order (wrap-around), so each pair is always adjacent.
  * This is trivially solvable because adjacent cells always have a clear path.
  */
-function generateAdjacentPairsBoard(rows: number, cols: number): Board {
+function generateAdjacentPairsBoard(
+  rows: number,
+  cols: number,
+  availableDigits: number[] = ALL_DIGITS
+): Board {
   const board = createEmptyBoard(rows, cols);
   const totalCells = rows * cols;
+  const validPairs = getValidPairs(availableDigits);
 
   // Pair cells in linear order: 0-1, 2-3, 4-5, etc.
   // Linear index i maps to (row: floor(i/cols), col: i%cols)
@@ -364,12 +409,11 @@ function generateAdjacentPairsBoard(rows: number, cols: number): Board {
     const pos1 = { row: Math.floor(i / cols), col: i % cols };
     const pos2 = { row: Math.floor((i + 1) / cols), col: (i + 1) % cols };
 
-    // Generate random matching pair
-    const value = Math.floor(Math.random() * 9) + 1;
-    const match = Math.random() < 0.5 ? value : (10 - value);
+    // Pick a random valid pair from available digits
+    const [val1, val2] = validPairs[Math.floor(Math.random() * validPairs.length)];
 
-    board[pos1.row][pos1.col].value = value;
-    board[pos2.row][pos2.col].value = match;
+    board[pos1.row][pos1.col].value = val1;
+    board[pos2.row][pos2.col].value = val2;
   }
 
   return board;
@@ -413,17 +457,24 @@ export function addRows(
   board: Board,
   count: number = 4,
   cols: number = COLS,
-  _stage: number = 1
+  _stage: number = 1,
+  availableDigits: number[] = ALL_DIGITS
 ): Board {
   const newBoard = board.map((row) => [...row]);
   const startRow = board.length;
   const boardCols = board[0]?.length || cols;
+  const availableSet = new Set(availableDigits);
 
   // Count remaining cells on the board
   const remainingCells = board.flat().filter(cell => cell.value !== null).length;
 
   // If board is already cleared, return unchanged
   if (remainingCells === 0) {
+    return newBoard;
+  }
+
+  // If no available digits, return unchanged
+  if (availableDigits.length === 0) {
     return newBoard;
   }
 
@@ -446,35 +497,58 @@ export function addRows(
     }
   }
 
-  // Build rescue pairs for stuck cells
+  // Build rescue pairs for stuck cells (only using available digits)
   const valuesToPlace: number[] = [];
   const shuffledStuck = shuffle(stuckValues);
 
   for (const value of shuffledStuck) {
     if (valuesToPlace.length >= totalNewCells) break;
 
-    // Add a value that matches the stuck cell
-    const rescueValue = Math.random() < 0.5 ? value : (10 - value);
+    // Add a value that matches the stuck cell (if available)
+    const complement = 10 - value;
+    const canUseSame = availableSet.has(value);
+    const canUseComplement = complement >= 1 && complement <= 9 && availableSet.has(complement);
+
+    let rescueValue: number | null = null;
+    if (canUseSame && canUseComplement) {
+      rescueValue = Math.random() < 0.5 ? value : complement;
+    } else if (canUseSame) {
+      rescueValue = value;
+    } else if (canUseComplement) {
+      rescueValue = complement;
+    }
+
+    if (rescueValue === null) continue; // Can't rescue this stuck cell
+
     valuesToPlace.push(rescueValue);
 
     if (valuesToPlace.length >= totalNewCells) break;
 
     // Add another value that matches the rescue value (ensures self-solvability)
-    const pairValue = Math.random() < 0.5 ? rescueValue : (10 - rescueValue);
-    valuesToPlace.push(pairValue);
+    const pairComplement = 10 - rescueValue;
+    const canPairSame = availableSet.has(rescueValue);
+    const canPairComplement = pairComplement >= 1 && pairComplement <= 9 && availableSet.has(pairComplement);
+
+    if (canPairSame && canPairComplement) {
+      valuesToPlace.push(Math.random() < 0.5 ? rescueValue : pairComplement);
+    } else if (canPairSame) {
+      valuesToPlace.push(rescueValue);
+    } else if (canPairComplement) {
+      valuesToPlace.push(pairComplement);
+    }
   }
 
-  // Generate barrier cells (random matchable pairs) to fill remaining space
+  // Generate barrier cells (random matchable pairs from available digits) to fill remaining space
+  const validPairs = getValidPairs(availableDigits);
   const barrierValues: number[] = [];
-  while (valuesToPlace.length + barrierValues.length < totalNewCells - 1) {
-    const value = Math.floor(Math.random() * 9) + 1;
-    const match = Math.random() < 0.5 ? value : (10 - value);
-    barrierValues.push(value, match);
+  while (valuesToPlace.length + barrierValues.length < totalNewCells - 1 && validPairs.length > 0) {
+    const [val1, val2] = validPairs[Math.floor(Math.random() * validPairs.length)];
+    barrierValues.push(val1, val2);
   }
 
   // Handle odd cell count edge case
-  if (valuesToPlace.length + barrierValues.length < totalNewCells) {
-    barrierValues.push(Math.floor(Math.random() * 9) + 1);
+  if (valuesToPlace.length + barrierValues.length < totalNewCells && availableDigits.length > 0) {
+    barrierValues.push(availableDigits[Math.floor(Math.random() * availableDigits.length)]);
   }
 
   // Place barrier cells first (at start of new rows), then rescue cells

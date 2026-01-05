@@ -15,6 +15,18 @@ const COLS = 9;
 const ROWS_TO_ADD = 4;
 const MAX_ADD_ROWS = 4;
 const MAX_HELP = 3;
+const MAX_DIGIT_USES = 12;  // Each digit can be used at most N times per stage
+const ALL_DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+/** Initial digit usage counts (all zeros) */
+function createInitialDigitUsage(): Record<number, number> {
+  return { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 };
+}
+
+/** Get available digits (those not exhausted) */
+function getAvailableDigits(usage: Record<number, number>): number[] {
+  return ALL_DIGITS.filter(d => usage[d] < MAX_DIGIT_USES);
+}
 
 interface UseGameOptions {
   soundEnabled?: boolean;
@@ -38,6 +50,7 @@ export function useGame(options: UseGameOptions = {}) {
   const [hintCells, setHintCells] = useState<Position[]>([]);
   const [showAddRowsHint, setShowAddRowsHint] = useState(false);
   const [newRows, setNewRows] = useState<number[]>([]);
+  const [digitUsage, setDigitUsage] = useState<Record<number, number>>(createInitialDigitUsage);
 
   // Track when no matches became available for add rows hint
   const noMatchesTimerRef = useRef<number | null>(null);
@@ -158,6 +171,7 @@ export function useGame(options: UseGameOptions = {}) {
 
     const nextStage = stage + 1;
     setStage(nextStage);
+    setDigitUsage(createInitialDigitUsage());  // Reset digit usage for new stage
     setBoard(generateBoard({ rows: INITIAL_ROWS, cols: COLS, stage: nextStage }));
     setAddRowsRemaining(MAX_ADD_ROWS);
     setStageComplete(false);
@@ -190,6 +204,15 @@ export function useGame(options: UseGameOptions = {}) {
           const distance = getMatchDistance(board, selectedCell, position);
           const boardAfterMatch = removeMatch(board, selectedCell, position);
           setScore((s) => s + points);
+
+          // Track digit usage - increment count for both matched digits
+          const digit1 = board[selectedCell.row][selectedCell.col].value!;
+          const digit2 = board[position.row][position.col].value!;
+          setDigitUsage(prev => ({
+            ...prev,
+            [digit1]: prev[digit1] + 1,
+            [digit2]: prev[digit2] + 1,
+          }));
 
           // Play match sound (pitch increases with distance)
           if (soundEnabled) playMatchSound(distance);
@@ -231,20 +254,24 @@ export function useGame(options: UseGameOptions = {}) {
 
     if (soundEnabled) playAddRowsSound();
 
+    const availableDigits = getAvailableDigits(digitUsage);
     setBoard((b) => {
-      const newBoard = addRows(b, ROWS_TO_ADD, COLS, stage);
+      const newBoard = addRows(b, ROWS_TO_ADD, COLS, stage, availableDigits);
       // Track the indices of newly added rows (they're at the end)
-      const newRowIndices = Array.from(
-        { length: ROWS_TO_ADD },
-        (_, i) => newBoard.length - ROWS_TO_ADD + i
-      );
-      addGlowToRows(newRowIndices);
+      const addedRows = newBoard.length - b.length;
+      if (addedRows > 0) {
+        const newRowIndices = Array.from(
+          { length: addedRows },
+          (_, i) => newBoard.length - addedRows + i
+        );
+        addGlowToRows(newRowIndices);
+      }
 
       return newBoard;
     });
     setAddRowsRemaining((r) => r - 1);
     setShowAddRowsHint(false);
-  }, [addRowsRemaining, stage, addGlowToRows, soundEnabled]);
+  }, [addRowsRemaining, stage, addGlowToRows, soundEnabled, digitUsage]);
 
   const handleNewGame = useCallback(() => {
     // Clear any existing glow timeouts
@@ -253,6 +280,7 @@ export function useGame(options: UseGameOptions = {}) {
     setNewRows([]);
 
     setStage(1);
+    setDigitUsage(createInitialDigitUsage());  // Reset digit usage for new game
     setBoard(generateBoard({ rows: INITIAL_ROWS, cols: COLS, stage: 1 }));
     setScore(0);
     setSelectedCell(null);

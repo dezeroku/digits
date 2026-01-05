@@ -332,6 +332,92 @@ describe('Board Solvability with Row Clearing', () => {
     return { success: false, moves, addRowsUsed, rowsCleared };
   }
 
+  const MAX_DIGIT_USES = 12;
+
+  /**
+   * Simulate playing through a board with addRows AND digit exhaustion
+   */
+  function simulateGameWithDigitExhaustion(
+    initialBoard: Board,
+    maxAddRows: number
+  ): { success: boolean; moves: number; addRowsUsed: number; exhaustedDigits: number[] } {
+    let board = initialBoard;
+    let moves = 0;
+    let addRowsUsed = 0;
+    const maxMoves = 1000;
+    const digitUsage: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 };
+
+    const getAvailableDigits = () =>
+      [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(d => digitUsage[d] < MAX_DIGIT_USES);
+
+    while (moves < maxMoves) {
+      if (isBoardCleared(board)) {
+        const exhaustedDigits = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(d => digitUsage[d] >= MAX_DIGIT_USES);
+        return { success: true, moves, addRowsUsed, exhaustedDigits };
+      }
+
+      const pair = findValidPair(board);
+      if (!pair) {
+        // Stuck - try using addRows if available
+        const availableDigits = getAvailableDigits();
+        if (addRowsUsed < maxAddRows && availableDigits.length > 0) {
+          board = addRows(board, 4, 9, 1, availableDigits);
+          addRowsUsed++;
+          continue;
+        }
+        // No addRows left or no digits available - game over
+        const exhaustedDigits = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(d => digitUsage[d] >= MAX_DIGIT_USES);
+        return { success: false, moves, addRowsUsed, exhaustedDigits };
+      }
+
+      // Track digit usage
+      const [pos1, pos2] = pair;
+      const digit1 = board[pos1.row][pos1.col].value!;
+      const digit2 = board[pos2.row][pos2.col].value!;
+      digitUsage[digit1]++;
+      digitUsage[digit2]++;
+
+      // Make the match
+      board = removeMatch(board, pos1, pos2);
+      moves++;
+
+      // Remove cleared rows
+      board = removeClearedRows(board);
+    }
+
+    const exhaustedDigits = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(d => digitUsage[d] >= MAX_DIGIT_USES);
+    return { success: false, moves, addRowsUsed, exhaustedDigits };
+  }
+
+  it('OBSERVATION: solvability with digit exhaustion (N=12)', { timeout: 60000 }, () => {
+    const numBoards = 20;
+    const maxAddRows = 4;
+    const results: Array<{
+      success: boolean;
+      moves: number;
+      addRowsUsed: number;
+      exhaustedDigits: number[];
+    }> = [];
+
+    for (let i = 0; i < numBoards; i++) {
+      const board = generateBoard({ rows: 10, cols: 9, stage: 1 });
+      const result = simulateGameWithDigitExhaustion(board, maxAddRows);
+      results.push(result);
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const avgAddRowsUsed = results.reduce((sum, r) => sum + r.addRowsUsed, 0) / numBoards;
+    const avgExhausted = results.reduce((sum, r) => sum + r.exhaustedDigits.length, 0) / numBoards;
+
+    console.log(`\n=== SOLVABILITY WITH DIGIT EXHAUSTION (N=${MAX_DIGIT_USES}) ===`);
+    console.log(`Success: ${successCount}/${numBoards} (${((successCount / numBoards) * 100).toFixed(1)}%)`);
+    console.log(`Avg addRows used: ${avgAddRowsUsed.toFixed(1)} / ${maxAddRows}`);
+    console.log(`Avg digits exhausted per game: ${avgExhausted.toFixed(1)}`);
+
+    // Observation only
+    expect(true).toBe(true);
+  });
+
   it('OBSERVATION: solvability across difficulty stages', { timeout: 120000 }, () => {
     const stages = [1, 3, 5, 7, 10];
 
