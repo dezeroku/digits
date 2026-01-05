@@ -1,5 +1,5 @@
 import { Board, Cell, Position } from '../types';
-import { hasValidPath, PathOptions } from './gameLogic';
+import { hasValidPath, PathOptions, findValidPair, removeMatch, isBoardCleared } from './gameLogic';
 
 /** Path options for addRows - restrict diagonals to adjacent rows for row-removal safety */
 const ADDROWS_PATH_OPTIONS: PathOptions = { maxDiagonalDistance: 1 };
@@ -183,110 +183,6 @@ function getDifficultyConfig(stage: number) {
 }
 
 /**
- * Find a matchable position based on difficulty settings.
- * For harder difficulties, prefers positions that are farther away.
- */
-function findMatchablePositionWithDifficulty(
-  board: Board,
-  target: Position,
-  candidates: Position[],
-  stage: number,
-  pairIndex: number,
-  totalPairs: number
-): Position | null {
-  const cols = board[0].length;
-  const rows = board.length;
-  const totalCells = rows * cols;
-  const config = getDifficultyConfig(stage);
-
-  // Calculate progress through board generation (0 = start, 1 = end)
-  const progress = pairIndex / totalPairs;
-
-  // Reduce distance requirements as board fills up (after 60% full, start relaxing)
-  const fillFactor = progress > 0.6 ? (progress - 0.6) / 0.4 : 0; // 0 to 1 for last 40%
-  const relaxFactor = 1 - fillFactor * 0.9; // Reduce requirements by up to 90%
-
-  // For hard mode: early pairs should be far apart, later pairs can be closer
-  // This creates "buried" pairs that need clearing first
-  const effectiveMinRatio = config.preferFar
-    ? config.minDistanceRatio * (1 - progress * 0.8) * relaxFactor
-    : config.minDistanceRatio * relaxFactor;
-  const effectiveMaxRatio = config.preferFar
-    ? config.maxDistanceRatio * (1 - progress * 0.5)
-    : config.maxDistanceRatio;
-
-  const minDistance = Math.floor(totalCells * effectiveMinRatio);
-  const maxDistance = Math.floor(totalCells * effectiveMaxRatio);
-
-  // Filter and sort candidates by distance preference
-  const validCandidates = candidates
-    .filter((c) => !(c.row === target.row && c.col === target.col))
-    .map((c) => ({
-      pos: c,
-      distance: getLinearDistance(target, c, cols),
-    }))
-    .filter((c) => c.distance >= minDistance);
-
-  // Sort by distance (prefer within target range, with some randomness)
-  validCandidates.sort((a, b) => {
-    const aInRange = a.distance <= maxDistance;
-    const bInRange = b.distance <= maxDistance;
-
-    if (aInRange && !bInRange) return -1;
-    if (!aInRange && bInRange) return 1;
-
-    // Within same category, prefer based on difficulty
-    if (config.preferFar) {
-      return b.distance - a.distance; // Farther first
-    } else {
-      return a.distance - b.distance; // Closer first
-    }
-  });
-
-  // Add randomness by shuffling top candidates
-  const topCount = Math.min(10, validCandidates.length);
-  const topCandidates = shuffle(validCandidates.slice(0, topCount));
-  const restCandidates = validCandidates.slice(topCount);
-  const orderedCandidates = [...topCandidates, ...restCandidates];
-
-  // Find first valid candidate with clear path
-  for (const { pos } of orderedCandidates) {
-    if (hasValidPath(board, target, pos)) {
-      return pos;
-    }
-  }
-
-  // Fallback: try ANY candidate with valid path, preferring farther ones
-  const fallbackCandidates = candidates
-    .filter((c) => !(c.row === target.row && c.col === target.col))
-    .map((c) => ({ pos: c, distance: getLinearDistance(target, c, cols) }))
-    .sort((a, b) => b.distance - a.distance); // Farther first
-
-  for (const { pos } of fallbackCandidates) {
-    if (hasValidPath(board, target, pos)) {
-      return pos;
-    }
-  }
-
-  // Last resort: try immediate neighbors (adjacent in grid, not linear)
-  const immediateNeighbors = [
-    { row: target.row - 1, col: target.col },
-    { row: target.row + 1, col: target.col },
-    { row: target.row, col: target.col - 1 },
-    { row: target.row, col: target.col + 1 },
-  ];
-
-  for (const neighbor of immediateNeighbors) {
-    const found = candidates.find(c => c.row === neighbor.row && c.col === neighbor.col);
-    if (found && hasValidPath(board, target, found)) {
-      return found;
-    }
-  }
-
-  return null;
-}
-
-/**
  * Generate a solvable board with configurable difficulty.
  *
  * Difficulty is based on stage number (1-10+):
@@ -305,18 +201,32 @@ export function generateBoard(options: GeneratorOptions = {}): Board {
     throw new Error('Board must have even number of cells');
   }
 
-  // Try the difficulty-based algorithm
+  // Try the difficulty-based algorithm with backtracking
   for (let attempt = 0; attempt < 50; attempt++) {
     const result = tryGenerateSolvableBoard(rows, cols, stage);
-    if (result) return result;
+    if (result) {
+      // console.log(`[BoardGen] Success on attempt ${attempt + 1}`);
+      return result;
+    }
   }
 
   // Fallback: generate pairs in adjacent positions (always solvable)
+  // This is expected for harder difficulties (stage 7+) where large gaps are harder to achieve
   return generateAdjacentPairsBoard(rows, cols);
 }
 
 /**
- * Try to generate a solvable board with difficulty-based pair placement
+ * Try to generate a solvable board with distance variety.
+ *
+ * LINEAR SNAKE FILLING:
+ * Fill positions in snake order (row by row, alternating direction).
+ * For each pair, pick position 1 from front, position 2 with some gap.
+ * This guarantees paths stay clear because we fill linearly.
+ *
+ * Solvability guaranteed because:
+ * - Pairs are placed in order along the snake
+ * - Path between pair members only crosses already-placed cells
+ * - Solution order = reverse of placement order
  */
 function tryGenerateSolvableBoard(
   rows: number,
@@ -324,63 +234,294 @@ function tryGenerateSolvableBoard(
   stage: number
 ): Board | null {
   const board = createEmptyBoard(rows, cols);
-  let available = getAllPositions(rows, cols);
-  // Shuffle but bias towards keeping positions that preserve connectivity
-  // Start with random shuffle, the algorithm will still prefer distant positions
-  available = shuffle(available);
+  const totalCells = rows * cols;
+  const totalPairs = totalCells / 2;
+  const config = getDifficultyConfig(stage);
 
-  const totalPairs = available.length / 2;
-  let pairIndex = 0;
+  // Create snake-ordered positions
+  // Row 0: left-to-right, Row 1: right-to-left, etc.
+  const snakePositions: Position[] = [];
+  for (let row = 0; row < rows; row++) {
+    if (row % 2 === 0) {
+      for (let col = 0; col < cols; col++) {
+        snakePositions.push({ row, col });
+      }
+    } else {
+      for (let col = cols - 1; col >= 0; col--) {
+        snakePositions.push({ row, col });
+      }
+    }
+  }
 
-  while (available.length >= 2) {
-    const pos1 = available.shift()!;
-    const pos2 = findMatchablePositionWithDifficulty(
-      board,
-      pos1,
-      available,
-      stage,
-      pairIndex,
-      totalPairs
-    );
+  // Remaining positions (indices into snakePositions that haven't been used)
+  const remaining: number[] = [];
+  for (let i = 0; i < snakePositions.length; i++) {
+    remaining.push(i);
+  }
 
-    if (!pos2) {
-      return null; // Failed, try again
+  // Place pairs
+  for (let pairIdx = 0; pairIdx < totalPairs; pairIdx++) {
+    if (remaining.length < 2) {
+      return null;
     }
 
-    available = available.filter(
-      (p) => !(p.row === pos2.row && p.col === pos2.col)
-    );
+    const progress = pairIdx / totalPairs;
 
-    // Generate values that minimize accidental adjacent matches
-    const [val1, val2] = generateBestPair(board, pos1, pos2);
-    board[pos1.row][pos1.col].value = val1;
-    board[pos2.row][pos2.col].value = val2;
+    // Determine target gap based on difficulty
+    let maxGap: number;
+    if (progress < 0.5) {
+      maxGap = config.preferFar
+        ? Math.min(remaining.length - 1, 15)
+        : Math.min(remaining.length - 1, 8);
+    } else {
+      const shrink = (progress - 0.5) * 2;
+      maxGap = Math.max(1, Math.floor((1 - shrink) * 5));
+    }
 
-    pairIndex++;
+    // Try different positions for pos1 if needed (backtracking)
+    let foundPair = false;
+    const maxPos1Tries = Math.min(5, remaining.length);
+
+    for (let pos1Try = 0; pos1Try < maxPos1Tries && !foundPair; pos1Try++) {
+      const idx1InRemaining = pos1Try;
+      const snakeIdx1 = remaining[idx1InRemaining];
+      const pos1 = snakePositions[snakeIdx1];
+
+      // Find a valid position 2 with path to position 1
+      let bestIdx2 = -1;
+
+      // Prefer gaps in the target range - try from highest to lowest
+      const targetGap = Math.min(maxGap, remaining.length - 1);
+
+      for (let tryGap = targetGap; tryGap >= 1; tryGap--) {
+        const idx2 = idx1InRemaining + tryGap;
+        if (idx2 >= remaining.length) continue;
+
+        const pos2 = snakePositions[remaining[idx2]];
+        if (hasValidPath(board, pos1, pos2)) {
+          bestIdx2 = idx2;
+          break;
+        }
+      }
+
+      // If no path found with preferred gap, try ANY valid pair
+      if (bestIdx2 < 0) {
+        for (let idx2 = 0; idx2 < remaining.length; idx2++) {
+          if (idx2 === idx1InRemaining) continue;
+          const pos2 = snakePositions[remaining[idx2]];
+          if (hasValidPath(board, pos1, pos2)) {
+            bestIdx2 = idx2;
+            break;
+          }
+        }
+      }
+
+      if (bestIdx2 >= 0) {
+        const snakeIdx2 = remaining[bestIdx2];
+        const pos2 = snakePositions[snakeIdx2];
+
+        // Place the pair
+        const [val1, val2] = generateBestPair(board, pos1, pos2);
+        board[pos1.row][pos1.col].value = val1;
+        board[pos2.row][pos2.col].value = val2;
+
+        // Remove used indices from remaining (remove higher index first)
+        if (bestIdx2 > idx1InRemaining) {
+          remaining.splice(bestIdx2, 1);
+          remaining.splice(idx1InRemaining, 1);
+        } else {
+          remaining.splice(idx1InRemaining, 1);
+          remaining.splice(bestIdx2, 1);
+        }
+
+        foundPair = true;
+      }
+    }
+
+    if (!foundPair) {
+      // No valid pair found even with backtracking - stuck
+      return null;
+    }
+  }
+
+  // Verify solvability before returning
+  if (!verifyBoardSolvable(board)) {
+    return null;
   }
 
   return board;
 }
 
 /**
- * Generate a board with pairs placed at fixed offset (guaranteed solvable via wrap-around).
- * Pairs are placed with a stride of half the board size for distance.
+ * Verify that a board can be completely solved
+ */
+function verifyBoardSolvable(board: Board): boolean {
+  let currentBoard = board;
+  let moves = 0;
+  const maxMoves = 100;
+
+  while (moves < maxMoves) {
+    if (isBoardCleared(currentBoard)) return true;
+    const pair = findValidPair(currentBoard);
+    if (!pair) return false;
+    currentBoard = removeMatch(currentBoard, pair[0], pair[1]);
+    moves++;
+  }
+
+  return false;
+}
+
+/**
+ * Create a unique key for a pair of positions (order-independent)
+ */
+function positionPairKey(pos1: Position, pos2: Position): string {
+  const key1 = `${pos1.row},${pos1.col}`;
+  const key2 = `${pos2.row},${pos2.col}`;
+  return key1 < key2 ? `${key1}-${key2}` : `${key2}-${key1}`;
+}
+
+/**
+ * Find valid pair placement, excluding already-tried placements.
+ */
+function findValidPairPlacementWithExclusions(
+  board: Board,
+  emptyPositions: Position[],
+  rows: number,
+  cols: number,
+  stage: number,
+  pairIndex: number,
+  totalPairs: number,
+  excludedPlacements: Set<string>
+): { pos1: Position; pos2: Position } | null {
+  const totalCells = rows * cols;
+  const config = getDifficultyConfig(stage);
+  const progress = pairIndex / totalPairs;
+
+  // Early pairs should be far apart; later pairs can be closer as needed
+  // This creates interesting boards where players must clear nearby pairs first
+  const fillFactor = progress > 0.6 ? (progress - 0.6) / 0.4 : 0;
+  const relaxFactor = 1 - fillFactor * 0.95; // Relax more aggressively near the end
+
+  // For easy mode (stage 1), still prefer some distance variety
+  // For hard mode, prefer much farther pairs
+  const baseMinRatio = 0.05; // At least 5% of board apart (4-5 cells)
+  const effectiveMinRatio = config.preferFar
+    ? Math.max(baseMinRatio, config.minDistanceRatio * (1 - progress * 0.8)) * relaxFactor
+    : baseMinRatio * relaxFactor;
+  const effectiveMaxRatio = config.preferFar
+    ? config.maxDistanceRatio * (1 - progress * 0.5)
+    : config.maxDistanceRatio;
+
+  const minDistance = Math.floor(totalCells * effectiveMinRatio);
+  const maxDistance = Math.floor(totalCells * effectiveMaxRatio);
+
+  // Strongly prefer non-adjacent placements early in generation
+  // This is key to avoiding too many adjacent pairs
+  const adjacentPenalty = Math.max(0, 50 * (1 - progress * 2)); // 50 early, 0 after 50%
+
+  // Collect candidates efficiently
+  const MAX_CANDIDATES = 100; // More candidates for better backtracking options
+  const candidates: Array<{
+    pos1: Position;
+    pos2: Position;
+    distance: number;
+    aligned: boolean;
+    score: number;
+  }> = [];
+
+  // Try positions in shuffled order for variety
+  const shuffledPositions = shuffle([...emptyPositions]);
+
+  for (let i = 0; i < shuffledPositions.length && candidates.length < MAX_CANDIDATES; i++) {
+    const pos1 = shuffledPositions[i];
+
+    for (let j = i + 1; j < shuffledPositions.length && candidates.length < MAX_CANDIDATES; j++) {
+      const pos2 = shuffledPositions[j];
+
+      // Skip already-tried placements
+      if (excludedPlacements.has(positionPairKey(pos1, pos2))) {
+        continue;
+      }
+
+      // Quick distance check
+      const distance = getLinearDistance(pos1, pos2, cols);
+
+      // Check if there's a valid path
+      if (hasValidPath(board, pos1, pos2)) {
+        const aligned = pos1.col === pos2.col || pos1.row === pos2.row;
+        const isAdjacent = distance <= 1;
+
+        // Calculate score (lower is better)
+        let score = 0;
+
+        // Penalize pairs outside preferred distance range
+        if (distance < minDistance) score += 50;
+        if (distance > maxDistance) score += 25; // Less penalty for too-far
+
+        // Strongly penalize adjacent pairs early in generation
+        if (isAdjacent) score += adjacentPenalty;
+
+        // Moderate penalty for aligned (same row/col) to reduce cascades
+        if (aligned) score += 10;
+
+        // Distance preference based on difficulty
+        if (config.preferFar) score -= distance * 2; // Stronger preference for far
+        else score += distance;
+
+        candidates.push({ pos1, pos2, distance, aligned, score });
+      }
+    }
+  }
+
+  if (candidates.length === 0) {
+    // Fallback: find ANY valid pair, even adjacent ones
+    // This is better than failing entirely
+    for (let i = 0; i < shuffledPositions.length; i++) {
+      const pos1 = shuffledPositions[i];
+      for (let j = i + 1; j < shuffledPositions.length; j++) {
+        const pos2 = shuffledPositions[j];
+        if (excludedPlacements.has(positionPairKey(pos1, pos2))) continue;
+        if (hasValidPath(board, pos1, pos2)) {
+          return { pos1, pos2 };
+        }
+      }
+    }
+    // Truly no valid pairs - show the isolated positions
+    if (emptyPositions.length <= 12) {
+      console.log(`[ISOLATED] Positions: ${emptyPositions.map(p => `(${p.row},${p.col})`).join(' ')}`);
+    }
+    return null;
+  }
+
+  // Sort by score and pick from top candidates
+  candidates.sort((a, b) => a.score - b.score);
+  const topCount = Math.min(10, candidates.length);
+  const selectedIdx = Math.floor(Math.random() * topCount);
+
+  return candidates[selectedIdx];
+}
+
+/**
+ * Generate a board with ADJACENT pairs (guaranteed solvable).
+ * Pairs cells in linear order (wrap-around), so each pair is always adjacent.
+ * This is trivially solvable because adjacent cells always have a clear path.
  */
 function generateAdjacentPairsBoard(rows: number, cols: number): Board {
   const board = createEmptyBoard(rows, cols);
-  const positions = getAllPositions(rows, cols);
-  const halfSize = positions.length / 2;
+  const totalCells = rows * cols;
 
-  // Pair position i with position i + halfSize (opposite side of board)
-  // This ensures pairs are far apart but still have valid wrap-around paths
-  for (let i = 0; i < halfSize; i++) {
-    const pos1 = positions[i];
-    const pos2 = positions[i + halfSize];
+  // Pair cells in linear order: 0-1, 2-3, 4-5, etc.
+  // Linear index i maps to (row: floor(i/cols), col: i%cols)
+  for (let i = 0; i < totalCells; i += 2) {
+    const pos1 = { row: Math.floor(i / cols), col: i % cols };
+    const pos2 = { row: Math.floor((i + 1) / cols), col: (i + 1) % cols };
 
-    // Use generateBestPair to minimize accidental adjacent matches
-    const [bestVal1, bestVal2] = generateBestPair(board, pos1, pos2);
-    board[pos1.row][pos1.col].value = bestVal1;
-    board[pos2.row][pos2.col].value = bestVal2;
+    // Generate random matching pair
+    const value = Math.floor(Math.random() * 9) + 1;
+    const match = Math.random() < 0.5 ? value : (10 - value);
+
+    board[pos1.row][pos1.col].value = value;
+    board[pos2.row][pos2.col].value = match;
   }
 
   return board;
@@ -415,6 +556,9 @@ function hasValidMatch(board: Board, pos: Position): boolean {
 /**
  * Add rows that can be matched with existing board content.
  * New cells are generated to help rescue stuck cells on the board.
+ *
+ * The number of new cells added equals the number of remaining cells on the board,
+ * capped at count * cols (default 36 cells = 4 rows).
  */
 export function addRows(
   board: Board,
@@ -425,7 +569,19 @@ export function addRows(
   const newBoard = board.map((row) => [...row]);
   const startRow = board.length;
   const boardCols = board[0]?.length || cols;
-  const totalNewCells = count * boardCols;
+
+  // Count remaining cells on the board
+  const remainingCells = board.flat().filter(cell => cell.value !== null).length;
+
+  // Calculate rows to add: scale with remaining cells, capped at count
+  // At least 1 row if any cells remain, up to count rows
+  const rowsToAdd = Math.min(count, Math.max(1, Math.ceil(remainingCells / boardCols)));
+  const totalNewCells = rowsToAdd * boardCols;
+
+  // If board is already cleared, return unchanged
+  if (remainingCells === 0) {
+    return newBoard;
+  }
 
   // Find stuck cells (cells with no valid match on current board)
   const stuckValues: number[] = [];
@@ -484,7 +640,7 @@ export function addRows(
     }
   }
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < rowsToAdd; i++) {
     const rowCells: Cell[] = [];
     for (let col = 0; col < boardCols; col++) {
       const valueIndex = i * boardCols + col;

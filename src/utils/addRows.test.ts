@@ -50,16 +50,18 @@ describe('addRows - rescue mechanism', () => {
   });
 
   it('should update positions correctly for new rows', () => {
+    // Board with 6 cells triggers 2 rows to be added (ceil(6/3) = 2)
     const board = createBoard([
       [1, 2, 3],
+      [4, 5, 6],
     ]);
 
     const result = addRows(board, 2, 3);
 
     // Check new row positions
-    expect(result[1][0].position).toEqual({ row: 1, col: 0 });
-    expect(result[1][2].position).toEqual({ row: 1, col: 2 });
-    expect(result[2][1].position).toEqual({ row: 2, col: 1 });
+    expect(result[2][0].position).toEqual({ row: 2, col: 0 });
+    expect(result[2][2].position).toEqual({ row: 2, col: 2 });
+    expect(result[3][1].position).toEqual({ row: 3, col: 1 });
   });
 
   it('should generate rescue values for stuck cells', () => {
@@ -78,17 +80,21 @@ describe('addRows - rescue mechanism', () => {
   });
 
   it('should generate rescue values for multiple stuck cells', () => {
-    // Board with multiple stuck cells that can't match each other
-    // 3 needs 3 or 7, 4 needs 4 or 6, 2 needs 2 or 8
+    // Board with 9 cells where 3 cells are stuck
+    // Stuck: 3 (needs 3/7), 4 (needs 4/6), 2 (needs 2/8)
+    // Not stuck: 1+9 can match, 5+5 can match
     const board = createBoard([
-      [3, null, 4],
-      [null, 2, null],
+      [3, 1, 4],
+      [9, 2, 5],
+      [5, 1, 9],
     ]);
 
-    const result = addRows(board, 2, 3);
-    const newValues = getBoardValues(result.slice(2)).filter(v => v !== null) as number[];
+    const result = addRows(board, 3, 3); // 3 rows = 9 new cells
+    const newValues = getBoardValues(result.slice(3)).filter(v => v !== null) as number[];
 
-    // Should have rescue values for each stuck cell
+    expect(newValues.length).toBe(9);
+
+    // Should have rescue values for stuck cells
     const has3Match = newValues.some(v => canMatch(v, 3));
     const has4Match = newValues.some(v => canMatch(v, 4));
     const has2Match = newValues.some(v => canMatch(v, 2));
@@ -171,17 +177,19 @@ describe('addRows - rescue mechanism', () => {
   });
 
   it('should fill remaining cells with random matchable pairs when few stuck cells', () => {
-    // Only 1 stuck cell, but adding many new cells
+    // Board with 6 cells - 5 is the only stuck cell (no 5 to match)
+    // 1+9=10, 2+8=10, 3+7=10 all have matches
     const board = createBoard([
-      [5, null, null],
+      [5, 1, 9],
+      [2, 8, 3],
     ]);
 
-    const result = addRows(board, 2, 3); // 6 new cells
-    const newValues = getBoardValues(result.slice(1)).filter(v => v !== null) as number[];
+    const result = addRows(board, 2, 3); // 2 rows = 6 new cells
+    const newValues = getBoardValues(result.slice(2)).filter(v => v !== null) as number[];
 
     expect(newValues.length).toBe(6);
 
-    // Should have a rescue value for 5 (either 5 or 5)
+    // Should have a rescue value for 5 (5 matches with 5)
     const has5Match = newValues.some(v => canMatch(v, 5));
     expect(has5Match).toBe(true);
 
@@ -193,24 +201,23 @@ describe('addRows - rescue mechanism', () => {
   });
 
   it('should handle empty board (no stuck cells)', () => {
+    // Empty board = 0 remaining cells = no rows added
     const board = createBoard([
       [null, null],
       [null, null],
     ]);
 
     const result = addRows(board, 1, 2);
-    const newValues = getBoardValues(result.slice(2)).filter(v => v !== null) as number[];
 
-    expect(newValues.length).toBe(2);
-    // Should still generate matchable pairs
-    expect(canMatch(newValues[0], newValues[1])).toBe(true);
+    // Should return board unchanged when no remaining cells
+    expect(result.length).toBe(2);
   });
 
   it('should mix barrier and rescue cells with some randomness', () => {
-    // Board with 2 stuck cells
+    // Board with 6 cells (2 stuck: 3 and 4 have no matches)
     const board = createBoard([
-      [3, null],  // 3 is stuck
-      [null, 4],  // 4 is stuck
+      [3, 1, 2],
+      [5, 4, 6],
     ]);
 
     // Track rescue cell positions across multiple runs
@@ -218,7 +225,7 @@ describe('addRows - rescue mechanism', () => {
     const rescueValues = [3, 7, 4, 6]; // Values that match 3 or 4
 
     for (let i = 0; i < 20; i++) {
-      const result = addRows(board, 3); // 3 rows x 2 cols = 6 new cells
+      const result = addRows(board, 3, 3); // 2 rows added (ceil(6/3) = 2, capped at 3)
       const newValues = getBoardValues(result.slice(2)).filter(v => v !== null) as number[];
 
       expect(newValues.length).toBe(6);
@@ -240,12 +247,14 @@ describe('addRows - rescue mechanism', () => {
   it('should ensure new rows are self-solvable', () => {
     // Run multiple times to verify pairs are always matchable
     for (let i = 0; i < 20; i++) {
+      // Board with 8 cells triggers 2 rows to be added
       const board = createBoard([
-        [3, null, 7], // 3 and 7 can match each other, not stuck
+        [3, 1, 7, 2],
+        [4, 5, 6, 8],
       ]);
 
-      const result = addRows(board, 2, 4); // 8 new cells
-      const newValues = getBoardValues(result.slice(1)).filter(v => v !== null) as number[];
+      const result = addRows(board, 2, 4); // 2 rows = 8 new cells
+      const newValues = getBoardValues(result.slice(2)).filter(v => v !== null) as number[];
 
       // Count values
       const counts = countValues(newValues);
