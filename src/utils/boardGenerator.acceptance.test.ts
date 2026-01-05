@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { generateBoard } from './boardGenerator';
-import { canMatch, getMatchDistance, removeMatch, removeClearedRows, findValidPair, isBoardCleared } from './gameLogic';
+import { generateBoard, addRows } from './boardGenerator';
+import { canMatch, getMatchDistance, removeMatch, removeClearedRows, findValidPair, isBoardCleared, hasAnyValidMatch } from './gameLogic';
 import { Board, Position } from '../types';
 
 /**
@@ -254,6 +254,83 @@ describe('Board Solvability with Row Clearing', () => {
     // TODO: Fix board generation to guarantee solvability
     expect(true).toBe(true);
   });
+
+  it('OBSERVATION: solvability with addRows rescue mechanism', { timeout: 60000 }, () => {
+    const numBoards = 20;
+    const maxAddRows = 4; // Same as game default
+    const results: Array<{
+      success: boolean;
+      moves: number;
+      addRowsUsed: number;
+      rowsCleared: number;
+    }> = [];
+
+    for (let i = 0; i < numBoards; i++) {
+      const board = generateBoard({ rows: 10, cols: 9, stage: 1 });
+      const result = simulateGameWithAddRows(board, maxAddRows);
+      results.push(result);
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const avgAddRowsUsed = results.reduce((sum, r) => sum + r.addRowsUsed, 0) / numBoards;
+    const avgMoves = successCount > 0
+      ? results.filter(r => r.success).reduce((sum, r) => sum + r.moves, 0) / successCount
+      : 0;
+
+    console.log(`\n=== SOLVABILITY WITH ADDROWS ===`);
+    console.log(`Success: ${successCount}/${numBoards} (${((successCount / numBoards) * 100).toFixed(1)}%)`);
+    console.log(`Avg addRows used: ${avgAddRowsUsed.toFixed(1)} / ${maxAddRows}`);
+    if (successCount > 0) {
+      console.log(`Avg moves to clear: ${avgMoves.toFixed(1)}`);
+    }
+
+    // Observation only
+    expect(true).toBe(true);
+  });
+
+  /**
+   * Simulate playing through a board with addRows rescue mechanism
+   */
+  function simulateGameWithAddRows(
+    initialBoard: Board,
+    maxAddRows: number
+  ): { success: boolean; moves: number; addRowsUsed: number; rowsCleared: number } {
+    let board = initialBoard;
+    let moves = 0;
+    let addRowsUsed = 0;
+    let rowsCleared = 0;
+    const maxMoves = 1000;
+
+    while (moves < maxMoves) {
+      if (isBoardCleared(board)) {
+        return { success: true, moves, addRowsUsed, rowsCleared };
+      }
+
+      const pair = findValidPair(board);
+      if (!pair) {
+        // Stuck - try using addRows if available
+        if (addRowsUsed < maxAddRows) {
+          board = addRows(board, 4, 9, 1);
+          addRowsUsed++;
+          continue; // Try again with new rows
+        }
+        // No addRows left and no valid pairs - game over
+        return { success: false, moves, addRowsUsed, rowsCleared };
+      }
+
+      // Make the match
+      const [pos1, pos2] = pair;
+      board = removeMatch(board, pos1, pos2);
+      moves++;
+
+      // Remove cleared rows
+      const beforeRows = board.length;
+      board = removeClearedRows(board);
+      rowsCleared += beforeRows - board.length;
+    }
+
+    return { success: false, moves, addRowsUsed, rowsCleared };
+  }
 
   it('OBSERVATION: solvability across difficulty stages', { timeout: 120000 }, () => {
     const stages = [1, 3, 5, 7, 10];
