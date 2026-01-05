@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useGame } from './hooks/useGame';
 import { useVersionCheck } from './hooks/useVersionCheck';
+import { useSettings } from './hooks/useSettings';
 import { Board } from './components/Board';
 import { ScoreBoard } from './components/ScoreBoard';
 import { GameControls } from './components/GameControls';
@@ -10,12 +11,15 @@ import { TopScoresModal } from './components/TopScoresModal';
 import { WelcomeModal } from './components/WelcomeModal';
 import { GameOverModal } from './components/GameOverModal';
 import { UpdateBanner } from './components/UpdateBanner';
+import { SettingsModal } from './components/SettingsModal';
 import { getTopScores, addScore, ScoreEntry } from './utils/scoreStorage';
 import { playGameOverSound, playHighScoreSound } from './utils/sounds';
 
 const WELCOME_SEEN_KEY = 'digits-welcome-seen';
 
 function App() {
+  const { settings, toggleSound, toggleAnimations } = useSettings();
+
   const {
     board,
     score,
@@ -35,7 +39,10 @@ function App() {
     handleNewGame,
     handleContinue,
     handleHelp,
-  } = useGame();
+  } = useGame({
+    soundEnabled: settings.soundEnabled,
+    animationsEnabled: settings.animationsEnabled,
+  });
 
   const { updateAvailable, reloadApp, dismissUpdate } = useVersionCheck();
 
@@ -43,6 +50,7 @@ function App() {
   const [showTopScores, setShowTopScores] = useState(false);
   const [topScores, setTopScores] = useState<ScoreEntry[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [isHighScore, setIsHighScore] = useState(false);
 
   // Handle game over - save score and check if it's a high score
@@ -55,13 +63,15 @@ function App() {
       setIsHighScore(achievedHighScore);
 
       // Play appropriate sound
-      if (achievedHighScore) {
-        playHighScoreSound();
-      } else {
-        playGameOverSound();
+      if (settings.soundEnabled) {
+        if (achievedHighScore) {
+          playHighScoreSound();
+        } else {
+          playGameOverSound();
+        }
       }
     }
-  }, [gameOver, score]);
+  }, [gameOver, score, settings.soundEnabled]);
 
   const handleGameOverRestart = () => {
     handleNewGame();
@@ -125,7 +135,17 @@ function App() {
           </span>
         </div>
         <h1 className="header-title">Digits!</h1>
-        <ScoreBoard score={score} onTopScores={handleShowTopScores} />
+        <div className="header-right">
+          <button
+            className="btn-icon"
+            onClick={() => setShowSettings(true)}
+            aria-label="Settings"
+            title="Settings"
+          >
+            ⚙️
+          </button>
+          <ScoreBoard score={score} onTopScores={handleShowTopScores} />
+        </div>
       </header>
       <main className="main">
         <Board
@@ -172,6 +192,14 @@ function App() {
         <TopScoresModal scores={topScores} onClose={handleCloseTopScores} />
       )}
       {showWelcome && <WelcomeModal onClose={handleCloseWelcome} />}
+      {showSettings && (
+        <SettingsModal
+          settings={settings}
+          onToggleSound={toggleSound}
+          onToggleAnimations={toggleAnimations}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
       {gameOver && (
         <GameOverModal
           score={score}

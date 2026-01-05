@@ -16,7 +16,13 @@ const ROWS_TO_ADD = 4;
 const MAX_ADD_ROWS = 4;
 const MAX_HELP = 3;
 
-export function useGame() {
+interface UseGameOptions {
+  soundEnabled?: boolean;
+  animationsEnabled?: boolean;
+}
+
+export function useGame(options: UseGameOptions = {}) {
+  const { soundEnabled = true, animationsEnabled = true } = options;
   const [stage, setStage] = useState(1);
   const [board, setBoard] = useState<Board>(() =>
     generateBoard({ rows: INITIAL_ROWS, cols: COLS, stage: 1 })
@@ -41,6 +47,8 @@ export function useGame() {
 
   // Helper to add glow to specific rows with independent timers
   const addGlowToRows = useCallback((rowIndices: number[]) => {
+    if (!animationsEnabled) return;
+
     // Add new rows to the glow set
     setNewRows(prev => [...new Set([...prev, ...rowIndices])]);
 
@@ -56,7 +64,7 @@ export function useGame() {
       }, NEW_ROWS_GLOW_MS);
       glowTimeoutsRef.current.set(idx, timeoutId);
     });
-  }, []);
+  }, [animationsEnabled]);
 
   // Glow effect for initial board on mount
   useEffect(() => {
@@ -69,9 +77,9 @@ export function useGame() {
     if (isBoardCleared(board) && !stageComplete) {
       setStageComplete(true);
       setSelectedCell(null);
-      playStageCompleteSound();
+      if (soundEnabled) playStageCompleteSound();
     }
-  }, [board, stageComplete]);
+  }, [board, stageComplete, soundEnabled]);
 
   // Check for game over (no valid matches and no add rows remaining)
   useEffect(() => {
@@ -182,7 +190,7 @@ export function useGame() {
           setScore((s) => s + points);
 
           // Play match sound (pitch increases with distance)
-          playMatchSound(distance);
+          if (soundEnabled) playMatchSound(distance);
 
           // Check for cleared rows
           const clearedIndices = getClearedRowIndices(boardAfterMatch);
@@ -192,7 +200,7 @@ export function useGame() {
             setClearingRows(clearedIndices);
 
             // Play row clear sound after a short delay
-            setTimeout(() => playRowClearSound(), 100);
+            if (soundEnabled) setTimeout(() => playRowClearSound(), 100);
 
             // After animation, actually remove the rows
             setTimeout(() => {
@@ -204,7 +212,7 @@ export function useGame() {
           }
         } else {
           // Invalid match - show feedback
-          playInvalidMatchSound();
+          if (soundEnabled) playInvalidMatchSound();
           setInvalidCells([selectedCell, position]);
           setTimeout(() => {
             setInvalidCells([]);
@@ -213,7 +221,7 @@ export function useGame() {
         setSelectedCell(null);
       }
     },
-    [board, selectedCell]
+    [board, selectedCell, soundEnabled]
   );
 
   const handleAddRows = useCallback(() => {
@@ -249,12 +257,12 @@ export function useGame() {
     setGameOver(false);
     setHelpRemaining(MAX_HELP);
     setShowAddRowsHint(false);
-    playGameStartSound();
+    if (soundEnabled) playGameStartSound();
 
     // Glow effect for all new rows
     const allRowIndices = Array.from({ length: INITIAL_ROWS }, (_, i) => i);
     addGlowToRows(allRowIndices);
-  }, [addGlowToRows]);
+  }, [addGlowToRows, soundEnabled]);
 
   return {
     board,
