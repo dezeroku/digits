@@ -356,6 +356,8 @@ export function useGame(options: UseGameOptions = {}) {
     helpRemaining,
     showAddRowsHint,
     newCells,
+    digitUsage,
+    maxDigitUses: MAX_DIGIT_USES,
     handleCellClick,
     handleAddRows,
     handleNewGame,

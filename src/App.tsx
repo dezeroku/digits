@@ -5,6 +5,7 @@ import { useSettings } from './hooks/useSettings';
 import { Board } from './components/Board';
 import { ScoreBoard } from './components/ScoreBoard';
 import { GameControls } from './components/GameControls';
+import { DigitAvailability } from './components/DigitAvailability';
 import { StageCompleteModal } from './components/StageCompleteModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { TopScoresModal } from './components/TopScoresModal';
@@ -34,6 +35,8 @@ function App() {
     helpRemaining,
     showAddRowsHint,
     newCells,
+    digitUsage,
+    maxDigitUses,
     handleCellClick,
     handleAddRows,
     handleNewGame,
@@ -149,6 +152,7 @@ function App() {
           <ScoreBoard score={score} onTopScores={handleShowTopScores} />
         </div>
       </header>
+      <DigitAvailability digitUsage={digitUsage} maxUses={maxDigitUses} />
       <main className="main">
         <Board
           board={board}

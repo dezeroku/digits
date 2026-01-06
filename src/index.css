@@ -108,6 +108,58 @@ body {
   color: #e94560;
 }
 
+/* Digit availability indicator */
+.digit-availability {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0;
+}
+
+.digit-availability-list {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.digit-availability-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.digit-availability-item .digit-value {
+  font-size: 0.9rem;
+  font-weight: bold;
+  line-height: 1;
+  transition: all 0.3s ease;
+}
+
+/* High availability (>50%) - bright, ready to use */
+.digit-availability-item.high .digit-value {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Medium availability (25-50%) - slightly dimmer */
+.digit-availability-item.medium .digit-value {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Low availability (<25%) - running low */
+.digit-availability-item.low .digit-value {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* Exhausted - completed, subtle checkmark style */
+.digit-availability-item.exhausted .digit-value {
+  color: #4ecca3;
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
 .btn-icon {
   background: rgba(255, 255, 255, 0.1);
   border: none;
