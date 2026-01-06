@@ -222,13 +222,21 @@ export function generateBoard(options: GeneratorOptions = {}): Board {
   for (let attempt = 0; attempt < 50; attempt++) {
     const result = tryGenerateSolvableBoard(rows, cols, stage, availableDigits);
     if (result) {
-      // console.log(`[BoardGen] Success on attempt ${attempt + 1}`);
       return result;
     }
   }
 
-  // Fallback: generate pairs in adjacent positions (always solvable)
-  // This is expected for harder difficulties (stage 7+) where large gaps are harder to achieve
+  // Fallback: try each preceding stage (from highest to lowest) to maintain difficulty
+  for (let fallbackStage = stage - 1; fallbackStage >= 1; fallbackStage--) {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const result = tryGenerateSolvableBoard(rows, cols, fallbackStage, availableDigits);
+      if (result) {
+        return result;
+      }
+    }
+  }
+
+  // Last resort fallback: generate pairs in adjacent positions (always solvable)
   return generateAdjacentPairsBoard(rows, cols, availableDigits);
 }
 

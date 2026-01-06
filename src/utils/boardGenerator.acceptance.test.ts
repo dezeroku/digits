@@ -137,6 +137,29 @@ describe('Board Generation - Distance Distribution Acceptance Tests', () => {
     expect(pairs.length).toBeGreaterThan(0);
   });
 
+  it('REGRESSION: higher stages should NOT have mostly adjacent pairs', { timeout: 60000 }, () => {
+    const stagesToTest = [1, 3, 5, 7, 10];
+
+    for (const stage of stagesToTest) {
+      let totalAdjacent = 0;
+      let totalPairs = 0;
+
+      for (let i = 0; i < 10; i++) {
+        const board = generateBoard({ rows: 10, cols: 9, stage });
+        const pairs = findAllMatchablePairs(board);
+        const analysis = analyzeDistances(pairs);
+        totalAdjacent += analysis.adjacent;
+        totalPairs += analysis.total;
+      }
+
+      const adjacentRatio = totalPairs > 0 ? totalAdjacent / totalPairs : 0;
+      console.log(`Stage ${stage}: ${(adjacentRatio * 100).toFixed(1)}% adjacent (${totalAdjacent}/${totalPairs})`);
+
+      // All stages should have reasonable distribution - not >80% adjacent
+      expect(adjacentRatio).toBeLessThan(0.8);
+    }
+  });
+
   it('DEBUG: check first row of generated board', { timeout: 30000 }, () => {
     for (let i = 0; i < 5; i++) {
       const board = generateBoard({ rows: 10, cols: 9, stage: 1 });
