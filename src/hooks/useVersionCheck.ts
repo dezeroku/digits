@@ -1,50 +1,50 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { registerSW } from 'virtual:pwa-register';
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // Check every 5 minutes
-const VERSION_FILE = 'version.json';
-
-interface VersionInfo {
-  version: string;
-  buildTime: string;
-}
 
 export function useVersionCheck() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [currentVersion] = useState<string>(__GIT_COMMIT__);
+  const updateSWRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
 
-  const checkForUpdate = useCallback(async () => {
-    try {
-      // Add cache-busting query param
-      const response = await fetch(`${import.meta.env.BASE_URL}${VERSION_FILE}?t=${Date.now()}`);
-      if (!response.ok) return;
-
-      const data: VersionInfo = await response.json();
-
-      if (data.version !== currentVersion) {
+  // Register service worker and set up update detection
+  useEffect(() => {
+    const updateSW = registerSW({
+      // Called when a new service worker is available
+      onNeedRefresh() {
         setUpdateAvailable(true);
-      }
-    } catch {
-      // Silently fail - network issues shouldn't break the game
-    }
-  }, [currentVersion]);
+      },
+      // Called when the app is ready to work offline
+      onOfflineReady() {
+        console.log('App ready for offline use');
+      },
+      // Check for updates periodically
+      onRegisteredSW(_swUrl, registration) {
+        if (registration) {
+          // Check for updates periodically
+          setInterval(() => {
+            registration.update();
+          }, CHECK_INTERVAL_MS);
+        }
+      },
+    });
 
-  const reloadApp = useCallback(() => {
-    window.location.reload();
+    updateSWRef.current = updateSW;
+  }, []);
+
+  const reloadApp = useCallback(async () => {
+    if (updateSWRef.current) {
+      // Tell the service worker to skip waiting and activate
+      await updateSWRef.current(true);
+    } else {
+      // Fallback: force reload bypassing cache
+      window.location.reload();
+    }
   }, []);
 
   const dismissUpdate = useCallback(() => {
     setUpdateAvailable(false);
   }, []);
-
-  useEffect(() => {
-    // Check immediately on mount
-    checkForUpdate();
-
-    // Then check periodically
-    const interval = setInterval(checkForUpdate, CHECK_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [checkForUpdate]);
 
   return {
     updateAvailable,
