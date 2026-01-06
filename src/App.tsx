@@ -59,7 +59,7 @@ function App() {
   // Handle game over - save score and check if it's a high score
   useEffect(() => {
     if (gameOver) {
-      const wasAdded = addScore(score);
+      const wasAdded = addScore(score, stage);
       const scores = getTopScores();
       const isTop1 = scores.length > 0 && scores[0].score === score;
       const achievedHighScore = wasAdded && isTop1;
@@ -100,7 +100,7 @@ function App() {
   const handleConfirmNewGame = () => {
     setShowNewGameConfirm(false);
     // Save current score before starting new game
-    addScore(score);
+    addScore(score, stage);
     handleNewGame();
   };
 

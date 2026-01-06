@@ -570,14 +570,18 @@ body {
   font-size: 1.1rem;
 }
 
+.modal-scores {
+  max-width: 300px;
+}
+
 .scores-list {
   margin-bottom: 1.5rem;
 }
 
 .score-entry {
   display: flex;
-  align-items: center;
-  padding: 0.75rem;
+  flex-direction: column;
+  padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   margin-bottom: 0.5rem;
@@ -587,22 +591,41 @@ body {
   margin-bottom: 0;
 }
 
+.score-entry-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .score-rank {
-  font-weight: bold;
-  color: #6366f1;
-  width: 2.5rem;
+  font-size: 1.25rem;
+  min-width: 2rem;
+  text-align: center;
 }
 
 .score-points {
   font-weight: bold;
   color: #4ecca3;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   flex: 1;
 }
 
+.score-entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  padding-left: 2.75rem;
+}
+
+.score-stage {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .score-date {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
 }
 
 .modal-welcome {

@@ -1,6 +1,7 @@
 export interface ScoreEntry {
   score: number;
   date: string; // ISO format
+  stage?: number; // Stage reached (optional for backward compatibility)
 }
 
 const STORAGE_KEY = 'digits-top-scores';
@@ -33,13 +34,14 @@ export function isTopScore(score: number): boolean {
  * Add a score to the top scores list if it qualifies
  * Returns true if the score was added
  */
-export function addScore(score: number): boolean {
+export function addScore(score: number, stage?: number): boolean {
   if (score <= 0) return false;
 
   const scores = getTopScores();
   const newEntry: ScoreEntry = {
     score,
     date: new Date().toISOString(),
+    stage,
   };
 
   // Add new score and sort
