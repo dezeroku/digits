@@ -2,14 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useGame } from './useGame';
 import * as gameLogic from '../utils/gameLogic';
+import { clearGameState } from '../utils/gameStateStorage';
 
 describe('useGame', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    // Clear any saved game state before each test
+    clearGameState();
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    clearGameState();
   });
 
   describe('initial state', () => {

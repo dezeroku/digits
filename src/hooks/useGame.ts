@@ -3,6 +3,7 @@ import { Board, Position } from '../types';
 import { generateBoard, addRows } from '../utils/boardGenerator';
 import { canMatch, removeMatch, calculateScore, isBoardCleared, removeClearedRows, getClearedRowIndices, getMatchDistance, hasAnyValidMatch, findValidPair } from '../utils/gameLogic';
 import { playMatchSound, playRowClearSound, playStageCompleteSound, playInvalidMatchSound, playGameStartSound, playAddRowsSound, playHintSound } from '../utils/sounds';
+import { saveGameState, loadGameState, clearGameState } from '../utils/gameStateStorage';
 
 const ROW_CLEAR_ANIMATION_MS = 400;
 const INVALID_ANIMATION_MS = 400;
@@ -28,6 +29,35 @@ function getAvailableDigits(usage: Record<number, number>): number[] {
   return ALL_DIGITS.filter(d => usage[d] < MAX_DIGIT_USES);
 }
 
+/** Load initial state - either from storage or fresh */
+function getInitialState() {
+  const saved = loadGameState();
+  if (saved) {
+    return {
+      board: saved.board,
+      score: saved.score,
+      stage: saved.stage,
+      addRowsRemaining: saved.addRowsRemaining,
+      helpRemaining: saved.helpRemaining,
+      digitUsage: saved.digitUsage,
+      stageComplete: saved.stageComplete,
+      gameOver: saved.gameOver,
+      isRestored: true,
+    };
+  }
+  return {
+    board: generateBoard({ rows: INITIAL_ROWS, cols: COLS, stage: 1 }),
+    score: 0,
+    stage: 1,
+    addRowsRemaining: MAX_ADD_ROWS,
+    helpRemaining: MAX_HELP,
+    digitUsage: createInitialDigitUsage(),
+    stageComplete: false,
+    gameOver: false,
+    isRestored: false,
+  };
+}
+
 interface UseGameOptions {
   soundEnabled?: boolean;
   animationsEnabled?: boolean;
@@ -35,22 +65,24 @@ interface UseGameOptions {
 
 export function useGame(options: UseGameOptions = {}) {
   const { soundEnabled = true, animationsEnabled = true } = options;
-  const [stage, setStage] = useState(1);
-  const [board, setBoard] = useState<Board>(() =>
-    generateBoard({ rows: INITIAL_ROWS, cols: COLS, stage: 1 })
-  );
-  const [score, setScore] = useState(0);
+
+  // Load initial state (from storage or fresh)
+  const [initialState] = useState(getInitialState);
+
+  const [stage, setStage] = useState(initialState.stage);
+  const [board, setBoard] = useState<Board>(initialState.board);
+  const [score, setScore] = useState(initialState.score);
   const [selectedCell, setSelectedCell] = useState<Position | null>(null);
-  const [addRowsRemaining, setAddRowsRemaining] = useState(MAX_ADD_ROWS);
-  const [stageComplete, setStageComplete] = useState(false);
-  const [gameOver, setGameOver] = useState(false);
+  const [addRowsRemaining, setAddRowsRemaining] = useState(initialState.addRowsRemaining);
+  const [stageComplete, setStageComplete] = useState(initialState.stageComplete);
+  const [gameOver, setGameOver] = useState(initialState.gameOver);
   const [clearingRows, setClearingRows] = useState<number[]>([]);
   const [invalidCells, setInvalidCells] = useState<Position[]>([]);
-  const [helpRemaining, setHelpRemaining] = useState(MAX_HELP);
+  const [helpRemaining, setHelpRemaining] = useState(initialState.helpRemaining);
   const [hintCells, setHintCells] = useState<Position[]>([]);
   const [showAddRowsHint, setShowAddRowsHint] = useState(false);
   const [newCells, setNewCells] = useState<Position[]>([]);
-  const [digitUsage, setDigitUsage] = useState<Record<number, number>>(createInitialDigitUsage);
+  const [digitUsage, setDigitUsage] = useState<Record<number, number>>(initialState.digitUsage);
 
   // Track when no matches became available for add rows hint
   const noMatchesTimerRef = useRef<number | null>(null);
@@ -87,8 +119,9 @@ export function useGame(options: UseGameOptions = {}) {
     });
   }, [animationsEnabled]);
 
-  // Glow effect for initial board on mount
+  // Glow effect for initial board on mount (skip if restored from save)
   useEffect(() => {
+    if (initialState.isRestored) return;
     const allCells: Position[] = [];
     for (let row = 0; row < INITIAL_ROWS; row++) {
       for (let col = 0; col < COLS; col++) {
@@ -96,7 +129,7 @@ export function useGame(options: UseGameOptions = {}) {
       }
     }
     addGlowToCells(allCells);
-  }, [addGlowToCells]);
+  }, [addGlowToCells, initialState.isRestored]);
 
   // Check for board cleared and show completion modal
   useEffect(() => {
@@ -150,6 +183,23 @@ export function useGame(options: UseGameOptions = {}) {
       }
     };
   }, [board, addRowsRemaining, gameOver, stageComplete]);
+
+  // Save game state to localStorage whenever relevant state changes
+  useEffect(() => {
+    // Don't save during row clearing animations
+    if (clearingRows.length > 0) return;
+
+    saveGameState({
+      board,
+      score,
+      stage,
+      addRowsRemaining,
+      helpRemaining,
+      digitUsage,
+      stageComplete,
+      gameOver,
+    });
+  }, [board, score, stage, addRowsRemaining, helpRemaining, digitUsage, stageComplete, gameOver, clearingRows.length]);
 
   // Handle help button - show a valid pair
   const handleHelp = useCallback(() => {
@@ -315,6 +365,9 @@ export function useGame(options: UseGameOptions = {}) {
   }, [addRowsRemaining, stage, addGlowToCells, soundEnabled, digitUsage]);
 
   const handleNewGame = useCallback(() => {
+    // Clear saved game state
+    clearGameState();
+
     // Clear any existing glow timeouts
     glowTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     glowTimeoutsRef.current.clear();
